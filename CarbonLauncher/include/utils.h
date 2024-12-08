@@ -3,6 +3,9 @@
 #include <GLFW/glfw3.h>
 
 #include <functional>
+#include <string>
+
+std::string GetExeDirectory();
 
 GLFWwindow* CreateWindow(int width, int height, const char* title);
 void InitImGui(GLFWwindow* window);
