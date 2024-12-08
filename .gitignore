@@ -1,0 +1,5 @@
+.vs
+vcpkg_installed
+x64
+*.vcxproj.*
+imgui.ini
