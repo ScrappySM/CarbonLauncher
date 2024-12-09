@@ -17,7 +17,7 @@ static HWND g_hWnd = nullptr;
  *
  * @return The last error message as a string.
  */
-static std::string GetLastErrorAsString();
+std::string GetLastErrorAsString();
 
 /*
  * Get the process ID of a process by name.

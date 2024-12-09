@@ -28,7 +28,7 @@
  *
  * @return The last error message as a string.
  */
-[[nodiscard]] static std::string GetLastErrorAsString() {
+std::string GetLastErrorAsString() {
 	DWORD errorMessageID = GetLastError();
 	if (errorMessageID == 0) {
 		return std::string();

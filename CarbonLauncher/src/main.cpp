@@ -69,11 +69,6 @@ int main(int argc, char* argv[]) {
 		}
 	} while (Process32Next(snap, &pe32));
 
-	/*discord::Core* dCore{};
-	discord::Core::Create(discordClientId, DiscordCreateFlags_NoRequireDiscord, &dCore);
-
-	discord::Core::ActivityManager activityManager = dCore->ActivityManager();*/
-
 	State.DiscordState = {};
 
     discord::Core* core{};
@@ -111,6 +106,9 @@ int main(int argc, char* argv[]) {
 	activity.GetAssets().SetLargeText("Carbon Launcher");
 	activity.GetAssets().SetSmallImage("carbon_launcher");
 	activity.SetType(discord::ActivityType::Playing);
+
+	activity.SetSupportedPlatforms((uint32_t)discord::ActivitySupportedPlatformFlags::Desktop);
+
 	State.DiscordState.core->ActivityManager().UpdateActivity(activity, [](discord::Result result) {
 		if (result == discord::Result::Ok) {
 			spdlog::info("Discord RPC updated");
@@ -330,8 +328,46 @@ int main(int argc, char* argv[]) {
 						return 1;
 					}
 
-					// TODO: Wait for message from CarbonSupervisor
+					// Allow some initialization time
+					std::this_thread::sleep_for(std::chrono::seconds(1));
 
+					// *Connect* to the supervisor pipe
+					HANDLE hPipe = CreateFileA("\\\\.\\pipe\\CarbonSupervisor", GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr);
+					if (hPipe == INVALID_HANDLE_VALUE) {
+						spdlog::error("Failed to open named pipe: {}", GetLastErrorAsString());
+						return 1;
+					}
+
+					spdlog::info("Opened named pipe");
+
+					// Wait for the supervisor to send `loaded`
+					char buffer[7] = { 0 };
+					DWORD bytesRead;
+					if (!ReadFile(hPipe, buffer, sizeof(buffer), &bytesRead, nullptr)) {
+						spdlog::error("Failed to read from named pipe: {}", GetLastErrorAsString());
+						return 1;
+					}
+
+					buffer[bytesRead - 1] = '\0';  // Null-terminate after each read.
+
+					spdlog::info("Received message: {}", buffer);
+
+					
+					while (strcmp(buffer, "loaded") != 0) {
+						// Clear the buffer before reading again
+						memset(buffer, 0, sizeof(buffer));
+
+						if (!ReadFile(hPipe, buffer, sizeof(buffer), &bytesRead, nullptr)) {
+							spdlog::error("Failed to read from named pipe: {}", GetLastErrorAsString());
+							return 1;
+						}
+
+						buffer[bytesRead] = '\0';  // Null-terminate after each read.
+
+						spdlog::info("Received message: {}", buffer);
+					}
+
+					// Inject mods
 					std::vector enabledModsClone = State.enabledMods;
 					for (auto& mod : enabledModsClone) {
 						if (!Inject(targetPID, hWnd, mod.string())) {
