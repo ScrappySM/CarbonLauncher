@@ -308,6 +308,40 @@ int main(int argc, char* argv[]) {
 			}
 			else {
 				ShellExecuteA(NULL, "open", "steam://run/387990/-dev", NULL, NULL, SW_SHOWMINIMIZED);
+
+				// Management of injection after message from CarbonSupervisor.
+				std::thread([&] {
+					// Inject CarbonSupervisor.dll
+					DWORD targetPID = GetProcID("ScrapMechanic.exe");
+					/*if (targetPID == 0) {
+						spdlog::error("Failed to get process ID of ScrapMechanic.exe");
+						return 1;
+					}*/
+
+					while (targetPID == 0) {
+						spdlog::info("Waiting for ScrapMechanic.exe to start");
+						std::this_thread::sleep_for(std::chrono::seconds(2));
+						targetPID = GetProcID("ScrapMechanic.exe");
+					}
+
+					std::string supervisorPath = GetExeDirectory() + "\\CarbonSupervisor.dll";
+					if (!Inject(targetPID, hWnd, supervisorPath)) {
+						spdlog::error("Failed to inject CarbonSupervisor.dll");
+						return 1;
+					}
+
+					// TODO: Wait for message from CarbonSupervisor
+
+					std::vector enabledModsClone = State.enabledMods;
+					for (auto& mod : enabledModsClone) {
+						if (!Inject(targetPID, hWnd, mod.string())) {
+							spdlog::error("Failed to inject mod: {}", mod.string());
+							continue;
+						}
+					}
+
+					return 0;
+				}).detach();
 			}
 		}
 
