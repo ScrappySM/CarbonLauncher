@@ -52,7 +52,4 @@ void InitImGui(GLFWwindow* window);
 
 void Render(GLFWwindow* window, std::function<void()> renderFunc);
 
-bool IsGameOpen();
-
-void OpenGame();
-void KillGame();
+bool IsGameOpen(const char* name);

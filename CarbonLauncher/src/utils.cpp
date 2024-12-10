@@ -212,7 +212,7 @@ void InitImGui(GLFWwindow* window) {
 	ImGui_ImplOpenGL3_Init("#version 460");
 }
 
-bool IsGameOpen() {
+bool IsGameOpen(const char* name) {
 	HANDLE hSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 	if (hSnap == INVALID_HANDLE_VALUE) {
 		return false;
@@ -224,7 +224,7 @@ bool IsGameOpen() {
 		return false;
 	}
 	do {
-		if (strcmp(pe32.szExeFile, "ScrapMechanic.exe") == 0) {
+		if (strcmp(pe32.szExeFile, name) == 0) {
 			CloseHandle(hSnap);
 			return true;
 		}
@@ -245,12 +245,4 @@ void Render(GLFWwindow* window, std::function<void()> renderFunc) {
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
-}
-
-void OpenGame() {
-	ShellExecuteA(NULL, "open", "steam://run/387990/-dev", NULL, NULL, SW_SHOWMINIMIZED);
-}
-
-void KillGame() {
-	ShellExecuteA(NULL, "open", "taskkill", "/F /IM ScrapMechanic.exe", NULL, SW_SHOWMINIMIZED);
 }

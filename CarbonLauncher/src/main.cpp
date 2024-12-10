@@ -28,6 +28,8 @@
 #include <discord-game-sdk/discord_game_sdk.h>
 #include <discord-game-sdk/discord.h>
 
+#define USE_DUMMY_GAME
+
 struct State_t {
 	std::vector<std::filesystem::path> enabledMods;
 
@@ -277,7 +279,12 @@ int main(int argc, char* argv[]) {
 		static std::chrono::time_point timeSinceCheckedOpen = std::chrono::system_clock::now() - std::chrono::seconds(2);
 		if (std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - timeSinceCheckedOpen).count() > 1) {
 			timeSinceCheckedOpen = std::chrono::system_clock::now();
-			isGameRunning = IsGameOpen();
+
+#ifdef USE_DUMMY_GAME
+			isGameRunning = IsGameOpen("DummyGame.exe");
+#else
+			isGameRunning = IsGameOpen("ScrapMechanic.exe");
+#endif
 		}
 
 		// If isGameRunning changes, update the activity
@@ -314,19 +321,44 @@ int main(int argc, char* argv[]) {
 		ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10);
 		if (ImGui::Button(text, ImVec2(size.x + 20, size.y + 10))) {
 			if (isGameRunning) {
-				ShellExecuteA(NULL, "open", "taskkill", "/F /IM ScrapMechanic.exe", NULL, SW_SHOWNORMAL);
+				//ShellExecuteA(NULL, "open", "taskkill", "/F /IM ScrapMechanic.exe", NULL, SW_SHOWNORMAL);
+
+#ifdef USE_DUMMY_GAME
+				ShellExecuteA(NULL, "open", "taskkill", "/F /IM DummyGame.exe", NULL, SW_SHOWMINIMIZED);
+#else
+				ShellExecuteA(NULL, "open", "taskkill", "/F /IM ScrapMechanic.exe", NULL, SW_SHOWMINIMIZED);
+#endif
 			}
 			else {
+				// ShellExecuteA(NULL, "open", "steam://run/387990/-dev", NULL, NULL, SW_SHOWMINIMIZED);
+
+#ifdef USE_DUMMY_GAME
+				std::string dummyGamePath = GetExeDirectory() + "\\DummyGame.exe";
+				ShellExecuteA(NULL, "open", dummyGamePath.c_str(), NULL, NULL, SW_SHOWMINIMIZED);
+#else
 				ShellExecuteA(NULL, "open", "steam://run/387990/-dev", NULL, NULL, SW_SHOWMINIMIZED);
+#endif
 
 				// Management of injection after message from CarbonSupervisor.
 				std::thread([&] {
+					//DWORD targetPID = GetProcID("ScrapMechanic.exe");
+
+#ifdef USE_DUMMY_GAME
+					DWORD targetPID = GetProcID("DummyGame.exe");
+#else
 					DWORD targetPID = GetProcID("ScrapMechanic.exe");
+#endif
 
 					while (targetPID == 0) {
 						spdlog::info("Waiting for ScrapMechanic.exe to start");
 						std::this_thread::sleep_for(std::chrono::seconds(2));
+						//targetPID = GetProcID("ScrapMechanic.exe");
+
+#ifdef USE_DUMMY_GAME
+						targetPID = GetProcID("DummyGame.exe");
+#else
 						targetPID = GetProcID("ScrapMechanic.exe");
+#endif
 					}
 
 					std::string supervisorPath = GetExeDirectory() + "\\CarbonSupervisor.dll";
@@ -365,6 +397,7 @@ int main(int argc, char* argv[]) {
 							// Inject mods
 							std::vector enabledModsClone = State.enabledMods;
 							for (auto& mod : enabledModsClone) {
+								spdlog::info("Injecting mod: {}", mod.string());
 								if (!Inject(targetPID, hWnd, mod.string())) {
 									spdlog::error("Failed to inject mod: {}", mod.string());
 									continue;
@@ -410,7 +443,14 @@ int main(int argc, char* argv[]) {
 				ImGui::Separator();
 
 				if (ImGui::Button("Yes")) {
+					//ShellExecuteA(NULL, "open", "taskkill", "/F /IM ScrapMechanic.exe", NULL, SW_SHOWMINIMIZED);
+
+#ifdef USE_DUMMY_GAME
+					ShellExecuteA(NULL, "open", "taskkill", "/F /IM DummyGame.exe", NULL, SW_SHOWMINIMIZED);
+#else
 					ShellExecuteA(NULL, "open", "taskkill", "/F /IM ScrapMechanic.exe", NULL, SW_SHOWMINIMIZED);
+#endif
+
 					ImGui::CloseCurrentPopup();
 				}
 
