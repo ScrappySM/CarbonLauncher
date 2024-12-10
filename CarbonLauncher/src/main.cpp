@@ -33,6 +33,7 @@ struct State_t {
 
 struct DiscordState_t {
     discord::User currentUser;
+	discord::Activity currentActivity;
 
     std::unique_ptr<discord::Core> core;
 } DiscordState;
@@ -75,48 +76,50 @@ int main(int argc, char* argv[]) {
 	auto result = discord::Core::Create(discordClientId, DiscordCreateFlags_NoRequireDiscord, &core);
     State.DiscordState.core.reset(core);
 	if (!State.DiscordState.core) {
-		spdlog::error("Failed to create Discord core");
-        std::exit(-1);
-    }
+		spdlog::warn("Failed to create Discord core");
+        //std::exit(-1);
+	}
+	else {
+		auto dCore = State.DiscordState.core.get();
 
-	auto dCore = State.DiscordState.core.get();
+		dCore->SetLogHook(discord::LogLevel::Debug, [](discord::LogLevel level, const char* message) {
+			spdlog::debug("[Discord] {}", message);
+			});
 
-	dCore->SetLogHook(discord::LogLevel::Debug, [](discord::LogLevel level, const char* message) {
-		spdlog::debug("[Discord] {}", message);
-	});
+		dCore->SetLogHook(discord::LogLevel::Info, [](discord::LogLevel level, const char* message) {
+			spdlog::info("[Discord] {}", message);
+			});
 
-	dCore->SetLogHook(discord::LogLevel::Info, [](discord::LogLevel level, const char* message) {
-		spdlog::info("[Discord] {}", message);
-		});
+		dCore->SetLogHook(discord::LogLevel::Warn, [](discord::LogLevel level, const char* message) {
+			spdlog::warn("[Discord] {}", message);
+			});
 
-	dCore->SetLogHook(discord::LogLevel::Warn, [](discord::LogLevel level, const char* message) {
-		spdlog::warn("[Discord] {}", message);
-		});
+		dCore->SetLogHook(discord::LogLevel::Error, [](discord::LogLevel level, const char* message) {
+			spdlog::error("[Discord] {}", message);
+			});
 
-	dCore->SetLogHook(discord::LogLevel::Error, [](discord::LogLevel level, const char* message) {
-		spdlog::error("[Discord] {}", message);
-		});
+		State.DiscordState.core->ActivityManager().RegisterCommand("carbonlauncher://run");
 
-	State.DiscordState.core->ActivityManager().RegisterCommand("carbonlauncher://run");
+		// Show Carbon Launcher as RPC
+		State.DiscordState.currentActivity = {};
+		auto& activity = State.DiscordState.currentActivity;
+		activity.SetDetails("In the launcher");
+		activity.SetState("The latest SM modded launcher");
+		activity.GetAssets().SetLargeText("Carbon Launcher");
+		activity.GetAssets().SetSmallImage("carbon_launcher");
+		activity.SetType(discord::ActivityType::Playing);
 
-	// Show Carbon Launcher as RPC
-	discord::Activity activity{};
-	activity.SetDetails("In the launcher");
-	activity.SetState("The latest SM modded launcher");
-	activity.GetAssets().SetLargeText("Carbon Launcher");
-	activity.GetAssets().SetSmallImage("carbon_launcher");
-	activity.SetType(discord::ActivityType::Playing);
+		activity.SetSupportedPlatforms((uint32_t)discord::ActivitySupportedPlatformFlags::Desktop);
 
-	activity.SetSupportedPlatforms((uint32_t)discord::ActivitySupportedPlatformFlags::Desktop);
-
-	State.DiscordState.core->ActivityManager().UpdateActivity(activity, [](discord::Result result) {
-		if (result == discord::Result::Ok) {
-			spdlog::info("Discord RPC updated");
-		}
-		else {
-			spdlog::error("Failed to update Discord RPC");
-		}
-		});
+		State.DiscordState.core->ActivityManager().UpdateActivity(activity, [](discord::Result result) {
+			if (result == discord::Result::Ok) {
+				spdlog::info("Discord RPC updated");
+			}
+			else {
+				spdlog::error("Failed to update Discord RPC");
+			}
+			});
+	}
 
 	GLFWwindow* window = CreateWindow(1280, 720, "Carbon Launcher");
 	InitImGui(window);
@@ -162,7 +165,8 @@ int main(int argc, char* argv[]) {
 	loadEnabledMods();
 
 	Render(window, [&]() {
-		dCore->RunCallbacks();
+		if (State.DiscordState.core)
+			State.DiscordState.core->RunCallbacks();
 
 		int w, h = 0;
 		glfwGetWindowSize(window, &w, &h);
@@ -216,7 +220,7 @@ int main(int argc, char* argv[]) {
 			if (ImGui::BeginTabItem("Mods")) {
 				auto dirIter = std::filesystem::directory_iterator(modsDir);
 				for (const auto& entry : dirIter) {
-					ImGui::BeginChild(entry.path().string().c_str(), ImVec2(0, 200), true);
+					ImGui::BeginChild(entry.path().string().c_str(), ImVec2(0, 150), true);
 					ImGui::TextWrapped(entry.path().filename().string().c_str());
 
 					bool isModEnabled = std::find(State.enabledMods.begin(), State.enabledMods.end(), entry.path()) != State.enabledMods.end();
@@ -278,18 +282,26 @@ int main(int argc, char* argv[]) {
 
 		// If isGameRunning changes, update the activity
 		if (oldIsGameRunning != isGameRunning) {
-			activity.SetDetails(isGameRunning ? "Playing Scrap Mechanic" : "In the launcher");
-			std::string modCount = fmt::format("{} mods enabled", State.enabledMods.size());
-			activity.SetState(isGameRunning ? modCount.c_str() : "The latest SM modded launcher");
+			//activity.SetDetails(isGameRunning ? "Playing Scrap Mechanic" : "In the launcher"); This gets set by game state anyway
 
-			State.DiscordState.core->ActivityManager().UpdateActivity(activity, [](discord::Result result) {
-				if (result == discord::Result::Ok) {
-					spdlog::info("Discord RPC updated");
+			std::string modCount = fmt::format("{} mods enabled", State.enabledMods.size());
+			//activity.SetState(isGameRunning ? modCount.c_str() : "The latest SM modded launcher");
+
+			if (State.DiscordState.core) {
+				auto& activity = State.DiscordState.currentActivity;
+				if (!isGameRunning) {
+					activity.SetState("The latest SM modded launcher");
 				}
-				else {
-					spdlog::error("Failed to update Discord RPC");
-				}
-				});
+
+				State.DiscordState.core->ActivityManager().UpdateActivity(activity, [](discord::Result result) {
+					if (result == discord::Result::Ok) {
+						spdlog::info("Discord RPC updated");
+					}
+					else {
+						spdlog::error("Failed to update Discord RPC");
+					}
+					});
+			}
 
 			oldIsGameRunning = isGameRunning;
 		}
@@ -299,7 +311,7 @@ int main(int argc, char* argv[]) {
 		const char* text = isGameRunning ? "Stop" : "Start";
 		ImVec2 pos = ImVec2((w - size.x) / 2, size.y);
 		ImGui::SetCursorPosX(pos.x);
-		ImGui::SetCursorPosY(h - pos.y - 24);
+		ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10);
 		if (ImGui::Button(text, ImVec2(size.x + 20, size.y + 10))) {
 			if (isGameRunning) {
 				ShellExecuteA(NULL, "open", "taskkill", "/F /IM ScrapMechanic.exe", NULL, SW_SHOWNORMAL);
@@ -309,12 +321,7 @@ int main(int argc, char* argv[]) {
 
 				// Management of injection after message from CarbonSupervisor.
 				std::thread([&] {
-					// Inject CarbonSupervisor.dll
 					DWORD targetPID = GetProcID("ScrapMechanic.exe");
-					/*if (targetPID == 0) {
-						spdlog::error("Failed to get process ID of ScrapMechanic.exe");
-						return 1;
-					}*/
 
 					while (targetPID == 0) {
 						spdlog::info("Waiting for ScrapMechanic.exe to start");
@@ -338,42 +345,46 @@ int main(int argc, char* argv[]) {
 						return 1;
 					}
 
-					spdlog::info("Opened named pipe");
-
-					// Wait for the supervisor to send `loaded`
-					char buffer[7] = { 0 };
+					// Infinite loop receiving messages from the supervisor
+					char buffer[1024];
 					DWORD bytesRead;
-					if (!ReadFile(hPipe, buffer, sizeof(buffer), &bytesRead, nullptr)) {
-						spdlog::error("Failed to read from named pipe: {}", GetLastErrorAsString());
-						return 1;
-					}
 
-					buffer[bytesRead - 1] = '\0';  // Null-terminate after each read.
-
-					spdlog::info("Received message: {}", buffer);
-
-					
-					while (strcmp(buffer, "loaded") != 0) {
-						// Clear the buffer before reading again
+					// Infinitely try to read from the pipe
+					while (true) {
 						memset(buffer, 0, sizeof(buffer));
-
 						if (!ReadFile(hPipe, buffer, sizeof(buffer), &bytesRead, nullptr)) {
 							spdlog::error("Failed to read from named pipe: {}", GetLastErrorAsString());
 							return 1;
 						}
-
 						buffer[bytesRead] = '\0';  // Null-terminate after each read.
+						std::string message = buffer;
 
-						spdlog::info("Received message: {}", buffer);
-					}
+						spdlog::info("Received message: {}", message);
 
-					// Inject mods
-					std::vector enabledModsClone = State.enabledMods;
-					for (auto& mod : enabledModsClone) {
-						if (!Inject(targetPID, hWnd, mod.string())) {
-							spdlog::error("Failed to inject mod: {}", mod.string());
-							continue;
+						if (message == "loaded") {
+							// Inject mods
+							std::vector enabledModsClone = State.enabledMods;
+							for (auto& mod : enabledModsClone) {
+								if (!Inject(targetPID, hWnd, mod.string())) {
+									spdlog::error("Failed to inject mod: {}", mod.string());
+									continue;
+								}
+							}
 						}
+
+						if (message.length() == 1 && isdigit(message[0])) {
+							if (message == "2") {
+								spdlog::info("TODO: Say in game");
+							}
+							else if (message == "3") {
+								spdlog::info("TODO: Say in menu");
+							}
+							else if (message == "1") {
+								spdlog::info("TODO: Say in loading screen");
+							}
+						}
+
+						std::this_thread::sleep_for(std::chrono::milliseconds(100));
 					}
 
 					return 0;

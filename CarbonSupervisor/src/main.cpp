@@ -9,9 +9,10 @@
 typedef unsigned int uint4_t;
 
 struct Contraption {
-	/* 0x000 */ HWND hWnd;
-	/* 0x008 */ char pad_008[0x174];
+	/* 0x000 */ char pad_056[0x17C];
 	/* 0x17C */ uint4_t gameStateType;
+	/* 0x180 */ char pad_004[0x20];
+	/* 0x1A0 */ HWND hWnd;
 };
 
 template <typename T>
@@ -33,19 +34,21 @@ DWORD WINAPI ThreadProc(LPVOID lpParameter) {
 		return 1;
 	}
 
-	std::this_thread::sleep_for(std::chrono::seconds(2));
+	uintptr_t contraptionAddr = (uintptr_t)GetModuleHandle(nullptr) + 0x12674B8;
+	Contraption* contraption = FetchClass<Contraption*>(contraptionAddr);
 
-	auto contraptionAddr = (uintptr_t)GetModuleHandle(nullptr) + 0x12674B8;
-	auto contraption = FetchClass<Contraption*>(contraptionAddr);
-	while (contraption == nullptr) {
+	while (contraption == nullptr)
+		contraption = FetchClass<Contraption*>(contraptionAddr);
+
+	while (contraption->gameStateType < 1 || contraption->gameStateType > 3 || contraption == nullptr || contraption->hWnd == nullptr) {
 		contraption = FetchClass<Contraption*>(contraptionAddr);
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}
 
-	std::this_thread::sleep_for(std::chrono::seconds(1));
 	while (contraption->gameStateType == 1) {
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}
+
 	std::this_thread::sleep_for(std::chrono::seconds(1));
 
 	// Open the supervisor pipe and send `loaded`
@@ -58,6 +61,34 @@ DWORD WINAPI ThreadProc(LPVOID lpParameter) {
 	}
 
 	for (;;) {
+		static uint4_t lastGameStateType = contraption->gameStateType;
+
+		if (contraption->gameStateType != lastGameStateType) {
+			lastGameStateType = contraption->gameStateType;
+
+			std::cout << "\n\n\n\n\nChanged game state type: " << contraption->gameStateType << "\n\n\n\n\n";
+
+			std::cout << "Game state type: " << contraption->gameStateType << std::endl;
+
+			// Send the game state type to the supervisor
+			memset(buffer, 0, sizeof(buffer));
+			//buffer[0] = contraption->gameStateType;
+			//_itoa(contraption->gameStateType, buffer, 10);
+			_itoa_s(contraption->gameStateType, buffer, 10);
+			// buffer -> "1" -> 0x31
+
+			if (!WriteFile(hPipe, buffer, sizeof(buffer), &bytesWritten, nullptr)) {
+				MessageBoxA(nullptr, "Failed to write to named pipe", "CarbonSupervisor", MB_OK);
+				return 1;
+			}
+
+			if (contraption->gameStateType == 3) {
+				break;
+			}
+
+			std::this_thread::sleep_for(std::chrono::seconds(1));
+		}
+
 		std::this_thread::sleep_for(std::chrono::seconds(1));
 	}
 
