@@ -1,125 +1,110 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
+#include <codecvt>
 
-#include <iostream>
+#include <cstdio>
 #include <thread>
-#include <chrono>
-#include <string>
+#include <iostream>
 
-typedef unsigned int uint4_t;
+#include <spdlog/spdlog.h>
+#include <MinHook.h>
 
-struct Contraption {
-	/* 0x000 */ char pad_056[0x17C];
-	/* 0x17C */ uint4_t gameStateType;
-	/* 0x180 */ char pad_004[0x20];
-	/* 0x1A0 */ HWND hWnd;
+const uintptr_t ContraptionOffset = 0x1267538;
+class Contraption {
+private:
+	/* 0x0000 */ char pad_0x0000[0x17C];
+public:
+	/* 0x017C */ int state;
+
+public:
+	static Contraption* GetInstance() {
+		// TODO sig scan for this (90 48 89 05 ? ? ? ? + 0x4 @ Contraption)
+		return *reinterpret_cast<Contraption**>((uintptr_t)GetModuleHandle(nullptr) + ContraptionOffset);
+	}
 };
 
-template <typename T>
-T FetchClass(uintptr_t address) {
-	return *reinterpret_cast<T*>(address);
-}
-
 /*
- * Thread entry point for the DLL.
- * @param lpParameter The parameter passed to the thread.
+ * DLL main thread
+ * 
+ * @param lpParam The parameter, in this case the module handle
  */
-DWORD WINAPI ThreadProc(LPVOID lpParameter) {
-	HMODULE hModule = static_cast<HMODULE>(lpParameter);
+DWORD WINAPI DllMainThread(LPVOID lpParam) {
+	AllocConsole();
+	freopen_s(reinterpret_cast<FILE**>(stdout), "CONOUT$", "w", stdout);
 
-	// *Create* a named pipe for other processes to connect to
-	HANDLE hPipe = CreateNamedPipeA("\\\\.\\pipe\\CarbonSupervisor", PIPE_ACCESS_DUPLEX, PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT, 1, 1024, 1024, 0, nullptr);
-	if (hPipe == INVALID_HANDLE_VALUE) {
-		MessageBoxA(nullptr, "Failed to open named pipe", "CarbonSupervisor", MB_OK);
-		return 1;
-	}
+	std::cout << "\n\n\n\n\nHello from CarbonSupervisor\n\n\n\n\n" << std::endl;
 
-	uintptr_t contraptionAddr = (uintptr_t)GetModuleHandle(nullptr) + 0x12674B8;
-	Contraption* contraption = FetchClass<Contraption*>(contraptionAddr);
+	auto hModule = static_cast<HMODULE>(lpParam);
 
-	while (contraption == nullptr)
-		contraption = FetchClass<Contraption*>(contraptionAddr);
-
-	while (contraption->gameStateType < 1 || contraption->gameStateType > 3 || contraption == nullptr || contraption->hWnd == nullptr) {
-		contraption = FetchClass<Contraption*>(contraptionAddr);
+	// Get contraption instance
+	auto contraption = Contraption::GetInstance();
+	while (contraption == nullptr || contraption->state < 1 || contraption->state > 3) {
+		contraption = Contraption::GetInstance();
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}
 
-	while (contraption->gameStateType == 1) {
+	// Check for the state changing off of 1 (not loading anymore)
+	while (contraption->state == 1) {
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}
 
-	std::this_thread::sleep_for(std::chrono::seconds(1));
+	spdlog::info("Contraption state: {}", contraption->state);
+	spdlog::info("Connecting to pipe");
 
-	// Open the supervisor pipe and send `loaded`
-	char buffer[] = "loaded";
-	DWORD bytesWritten;
+	auto pipe = CreateFile(
+		"\\\\.\\pipe\\CarbonPipe",
+		GENERIC_WRITE,
+		0,
+		nullptr,
+		OPEN_EXISTING,
+		0,
+		nullptr
+	);
 
-	if (!WriteFile(hPipe, buffer, sizeof(buffer), &bytesWritten, nullptr)) {
-		MessageBoxA(nullptr, "Failed to write to named pipe", "CarbonSupervisor", MB_OK);
-		return 1;
+	if (pipe == INVALID_HANDLE_VALUE) {
+		spdlog::error("Failed to connect to pipe");
+		return 0;
 	}
 
-	for (;;) {
-		static uint4_t lastGameStateType = contraption->gameStateType;
+	spdlog::info("Connected to pipe");
 
-		if (contraption->gameStateType != lastGameStateType) {
-			lastGameStateType = contraption->gameStateType;
+	// Send the loaded packet
+	const char* packet = "LOADED-:-";
+	DWORD bytesWritten = 0;
+	WriteFile(pipe, packet, strlen(packet), &bytesWritten, nullptr);
 
-			std::cout << "\n\n\n\n\nChanged game state type: " << contraption->gameStateType << "\n\n\n\n\n";
+	spdlog::info("Sent loaded packet");
 
-			std::cout << "Game state type: " << contraption->gameStateType << std::endl;
+	// Main loop
+	while (true) {
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-			// Send the game state type to the supervisor
-			memset(buffer, 0, sizeof(buffer));
-			//buffer[0] = contraption->gameStateType;
-			//_itoa(contraption->gameStateType, buffer, 10);
-			_itoa_s(contraption->gameStateType, buffer, 10);
-			// buffer -> "1" -> 0x31
-
-			if (!WriteFile(hPipe, buffer, sizeof(buffer), &bytesWritten, nullptr)) {
-				MessageBoxA(nullptr, "Failed to write to named pipe", "CarbonSupervisor", MB_OK);
-				return 1;
-			}
-
-			if (contraption->gameStateType == 3) {
-				break;
-			}
-
-			std::this_thread::sleep_for(std::chrono::seconds(1));
+		static int lastState = 0;
+		if (lastState != contraption->state) {
+			lastState = contraption->state;
+			// Send the state change packet
+			std::string packet = "STATECHANGE-:-" + std::to_string(contraption->state);
+			WriteFile(pipe, packet.c_str(), packet.size(), &bytesWritten, nullptr);
+			spdlog::info("Sent state change packet: {}", contraption->state);
 		}
-
-		std::this_thread::sleep_for(std::chrono::seconds(1));
 	}
-
-	// TODO: Send log messages
 
 	FreeLibraryAndExitThread(hModule, 0);
 	return 0;
 }
 
-
 /*
- * DLL Entry Point.
+ * DLL entry point
  * 
- * @param hModule The handle to the DLL module.
- * @param dwReason The reason for the DLL entry point being called.
- * @param lpReserved Reserved.
- * @return True if the DLL was successfully loaded, false otherwise.
+ * @param hModule The module handle
+ * @param ulReason The reason for calling this function
+ * @param lpReserved Reserved
+ * @return The exit code of the application
  */
-BOOL APIENTRY DllMain(HMODULE hModule, DWORD dwReason, LPVOID lpReserved) {
-	switch (dwReason) {
-	case DLL_PROCESS_ATTACH:
+BOOL APIENTRY DllMain(HMODULE hModule, DWORD ulReason, LPVOID lpReserved) {
+	if (ulReason == DLL_PROCESS_ATTACH) {
 		DisableThreadLibraryCalls(hModule);
-		CreateThread(nullptr, 0, ThreadProc, hModule, 0, nullptr);
-
-		break;
-	case DLL_PROCESS_DETACH:
-		break;
-	case DLL_THREAD_ATTACH:
-		break;
-	case DLL_THREAD_DETACH:
-		break;
+		CreateThread(nullptr, 0, DllMainThread, hModule, 0, nullptr);
 	}
 
 	return TRUE;
