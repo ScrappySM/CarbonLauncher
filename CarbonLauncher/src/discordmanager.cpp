@@ -42,8 +42,8 @@ DiscordManager::DiscordManager() {
 		this->currentActivity = {};
 		auto& activity = this->GetActivity();
 
-		activity.SetDetails("The latest modded launcher for Scrap Mechanic!");
-		activity.SetState("Not in game... https://github.com/ScrappySM/CarbonLauncher!");
+		activity.SetDetails("https://github.com/ScrappySM/CarbonLauncher!");
+		activity.SetState("In the launcher!");
 
 		activity.GetAssets().SetLargeImage("carbonlauncher");
 		activity.GetAssets().SetLargeText("Carbon Launcher");
@@ -66,7 +66,6 @@ DiscordManager::DiscordManager() {
 }
 
 void DiscordManager::UpdateState(const std::string& state) {
-	spdlog::info("Updating state to {}", state);
 	if (!this->core) {
 		return;
 	}
@@ -76,7 +75,6 @@ void DiscordManager::UpdateState(const std::string& state) {
 }
 
 void DiscordManager::UpdateDetails(const std::string& details) {
-	spdlog::info("Updating details to {}", details);
 	if (!this->core) {
 		return;
 	}
@@ -90,8 +88,6 @@ DiscordManager::~DiscordManager() {
 }
 
 void DiscordManager::UpdateActivity() const {
-	spdlog::info("Updating activity");
-
 	if (!this->core) {
 		return;
 	}
@@ -104,17 +100,11 @@ void DiscordManager::UpdateActivity() const {
 }
 
 discord::Activity& DiscordManager::GetActivity() {
-	spdlog::info("Getting activity");
-
 	return this->currentActivity;
 }
 
 void DiscordManager::Update() {
-	if (!this->core) {
-		return;
-	}
-
-	auto statePackets = C.pipeManager->GetPacketsByType(PacketType::STATECHANGE);
+	auto statePackets = C.pipeManager.GetPacketsByType(PacketType::STATECHANGE);
 	if (!statePackets.empty()) {
 		auto& packet = statePackets.front();
 
@@ -128,12 +118,15 @@ void DiscordManager::Update() {
 
 		switch (state) {
 		case 1:
+			spdlog::trace("Loading into a game...");
 			this->UpdateState("Loading into a game...");
 			break;
 		case 2:
+			spdlog::trace("In a game!");
 			this->UpdateState("In a game!");
 			break;
 		case 3:
+			spdlog::trace("In the main menu");
 			this->UpdateState("In the main menu");
 			break;
 		};
@@ -141,5 +134,6 @@ void DiscordManager::Update() {
 		statePackets.pop();
 	}
 
-	this->core->RunCallbacks();
+	if (this->core)
+		this->core->RunCallbacks();
 }

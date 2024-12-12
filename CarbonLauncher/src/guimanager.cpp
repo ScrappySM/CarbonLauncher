@@ -23,7 +23,7 @@
 
 using namespace Carbon;
 
-GUIManager::GUIManager(HINSTANCE hInstance) {
+GUIManager::GUIManager() {
     // Initialize GLFW
     if (!glfwInit()) {
         MessageBox(NULL, L"GLFW Initialization Failed!", L"Error!", MB_ICONEXCLAMATION | MB_OK);
@@ -110,13 +110,13 @@ void GUIManager::Run() const {
 void _GUI() {
 	using namespace Carbon;
 
-	C.discordManager->Update();
+	C.discordManager.Update();
 
 	// Begin main menu bar
 	if (ImGui::BeginMainMenuBar()) {
 		if (ImGui::BeginMenu("File")) {
 			if (ImGui::MenuItem("Exit")) {
-				glfwSetWindowShouldClose(C.guiManager->window, GLFW_TRUE);
+				glfwSetWindowShouldClose(C.guiManager.window, GLFW_TRUE);
 			}
 			ImGui::EndMenu();
 		}
@@ -124,7 +124,7 @@ void _GUI() {
 	}
 
 	int w, h;
-	glfwGetWindowSize(C.guiManager->window, &w, &h);
+	glfwGetWindowSize(C.guiManager.window, &w, &h);
 
 	ImGui::SetNextWindowPos(ImVec2(0, 0));
 	ImGui::SetNextWindowSize(ImVec2((float)w, (float)h));
@@ -134,20 +134,42 @@ void _GUI() {
 	if (ImGui::BeginTabBar("CarbonTabs", ImGuiTabBarFlags_None)) {
 		// Begin the first tab
 		if (ImGui::BeginTabItem("Home")) {
-			if (C.gameManager->IsGameRunning()) {
+			if (C.gameManager.IsGameRunning()) {
 				if (ImGui::Button("Kill game"))
-					C.gameManager->KillGame();
+					C.gameManager.KillGame();
 
 				ImGui::SameLine();
 
 				if (ImGui::Button("Inject")) {
 					std::string modulePath = Utils::GetCurrentModuleDir() + "CarbonSupervisor.dll";
-					C.gameManager->InjectModule(modulePath);
+					C.gameManager.InjectModule(modulePath);
 				}
 			}
 			else {
-				if (ImGui::Button("Start game"))
-					C.gameManager->StartGame();
+				static bool dummyGame = true;
+				if (ImGui::Checkbox("Dummy-game", &dummyGame)) {
+					if (dummyGame) {
+						C.processTarget = "DummyGame.exe";
+					}
+					else {
+						C.processTarget = "ScrapMechanic.exe";
+					}
+				}
+
+				static bool injectOnStart = false;
+				ImGui::Checkbox("Inject on start", &injectOnStart);
+
+				if (ImGui::Button("Start game")) {
+					C.gameManager.StartGame();
+
+					while (!C.gameManager.IsGameRunning())
+						std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+					if (injectOnStart) {
+						std::string modulePath = Utils::GetCurrentModuleDir() + "CarbonSupervisor.dll";
+						C.gameManager.InjectModule(modulePath);
+					}
+				}
 			}
 
 			ImGui::EndTabItem();

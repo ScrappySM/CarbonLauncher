@@ -44,6 +44,12 @@ GameManager::GameManager() {
 			CloseHandle(hProcesses);
 
 			if (found) {
+				// This may occur if the game was started before Carbon Launcher
+				// was opened.
+				if (!this->gameStartedTime.has_value()) {
+					this->gameStartedTime = std::chrono::system_clock::now();
+				}
+
 				auto hModules = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, entry.th32ProcessID);
 				if (hModules == INVALID_HANDLE_VALUE) {
 					continue;
@@ -82,6 +88,37 @@ GameManager::GameManager() {
 			}
 		}
 		});
+
+	this->moduleHandlerThread = std::thread([this]() {
+		while (true) {
+			std::this_thread::sleep_for(std::chrono::seconds(1));
+			if (this->IsGameRunning()) {
+				if (!C.pipeManager.GetPacketsByType(PacketType::LOADED).empty()) {
+					spdlog::info("Game loaded, injecting modules");
+
+					std::string modulesDir = Utils::GetCurrentModuleDir() + "modules";
+					std::filesystem::create_directory(modulesDir);
+
+					for (auto& module : std::filesystem::directory_iterator(modulesDir)) {
+						bool found = false;
+						for (auto& foundModule : this->modules) {
+							if (std::wstring(module.path().filename().wstring()) == foundModule.szModule) {
+								found = true;
+								break;
+							}
+						}
+
+						if (!found) {
+							this->InjectModule(module.path().string());
+						}
+						else {
+							spdlog::warn("Module `{}` is already loaded", module.path().string());
+						}
+					}
+				}
+			}
+		}
+	});
 }
 
 GameManager::~GameManager() {
@@ -129,6 +166,8 @@ void GameManager::StartGame() {
 		ShellExecute(NULL, L"open", L"steam://rungameid/387990", NULL, NULL, SW_SHOWNORMAL);
 		return;
 	}
+
+	this->gameStartedTime = std::chrono::system_clock::now();
 
 	std::string exePath = Utils::GetCurrentModuleDir() + C.processTarget;
 	ShellExecute(NULL, L"open", std::wstring(exePath.begin(), exePath.end()).c_str(), NULL, NULL, SW_SHOWNORMAL);

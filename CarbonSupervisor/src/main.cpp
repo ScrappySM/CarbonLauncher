@@ -7,9 +7,12 @@
 #include <iostream>
 
 #include <spdlog/spdlog.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+
 #include <MinHook.h>
 
 const uintptr_t ContraptionOffset = 0x1267538;
+
 class Contraption {
 private:
 	/* 0x0000 */ char pad_0x0000[0x17C];
@@ -32,7 +35,10 @@ DWORD WINAPI DllMainThread(LPVOID lpParam) {
 	AllocConsole();
 	freopen_s(reinterpret_cast<FILE**>(stdout), "CONOUT$", "w", stdout);
 
-	std::cout << "\n\n\n\n\nHello from CarbonSupervisor\n\n\n\n\n" << std::endl;
+	auto console = spdlog::stdout_color_mt("carbon");
+	spdlog::set_default_logger(console);
+
+	spdlog::info("Hello from CarbonSupervisor");
 
 	auto hModule = static_cast<HMODULE>(lpParam);
 
@@ -41,6 +47,11 @@ DWORD WINAPI DllMainThread(LPVOID lpParam) {
 	while (contraption == nullptr || contraption->state < 1 || contraption->state > 3) {
 		contraption = Contraption::GetInstance();
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+		static int i = 0;
+		if (i++ % 30 == 0) { // Every 3 seconds
+			spdlog::warn("Waiting for Contraption...");
+		}
 	}
 
 	// Check for the state changing off of 1 (not loading anymore)

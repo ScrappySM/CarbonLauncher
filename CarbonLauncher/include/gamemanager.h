@@ -32,6 +32,8 @@ namespace Carbon {
 		std::thread gameStatusThread;
 		std::mutex gameStatusMutex;
 
+		std::thread moduleHandlerThread;
+
 		// Tracks when the game was first seen as running by the GameManager
 		std::optional<std::chrono::time_point<std::chrono::system_clock>> gameStartedTime;
 

@@ -1,4 +1,5 @@
 #include "pipemanager.h"
+#include "state.h"
 
 #include <spdlog/spdlog.h>
 
@@ -33,12 +34,46 @@ PipeManager::PipeManager() {
 
 		// Infinitely read and parse packets and add them to the queue
 		while (true) {
-			char buffer[1024];
+			char buffer[1024]{};
 			DWORD bytesRead = 0;
 			if (!ReadFile(pipe, buffer, sizeof(buffer), &bytesRead, NULL)) {
 				spdlog::error("Failed to read from pipe");
-				break;
+
+				C.discordManager.UpdateState("In the launcher!");
+
+				// In this case, it is most likely the supervisor process has closed the pipe
+				// We should wait for the supervisor to reconnect
+
+				// Close the pipe
+				CloseHandle(pipe);
+
+				// Wait for the supervisor to reconnect
+				pipe = CreateNamedPipe(
+					L"\\\\.\\pipe\\CarbonPipe",
+					PIPE_ACCESS_INBOUND,
+					PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
+					PIPE_UNLIMITED_INSTANCES,
+					1024,
+					1024,
+					0,
+					NULL
+				);
+
+				if (pipe == INVALID_HANDLE_VALUE) {
+					spdlog::error("Failed to create pipe");
+					return;
+				}
+
+				if (!ConnectNamedPipe(pipe, NULL)) {
+					spdlog::error("Failed to connect to pipe");
+					CloseHandle(pipe);
+					return;
+				}
+
+				spdlog::info("Reconnected to pipe");
+				continue;
 			}
+
 			// Parse the packet
 			std::string packet(buffer, bytesRead);
 			auto delimiter = packet.find("-:-");
@@ -58,10 +93,17 @@ PipeManager::PipeManager() {
 			else if (type == "LOG") {
 				packetType = PacketType::LOG;
 			}
+			else {
+				spdlog::error("Unknown packet type received");
+				continue;
+			}
+
+			spdlog::trace("S-L : `{}` @ {}", !data.empty() ? data : "null", type);
+
 			Packet parsedPacket;
 			parsedPacket.type = packetType;
-
 			parsedPacket.data = data;
+
 			if (data.empty()) {
 				parsedPacket.data = std::nullopt;
 			}

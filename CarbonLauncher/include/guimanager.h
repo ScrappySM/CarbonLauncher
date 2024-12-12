@@ -12,7 +12,7 @@
 namespace Carbon {
 	class GUIManager {
 	public:
-		GUIManager(HINSTANCE hInstance);
+		GUIManager();
 		~GUIManager();
 
 		void RenderCallback(std::function<void()> callback) {
