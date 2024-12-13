@@ -68,6 +68,26 @@
                     "supported": "v0.7.2.775"
                 }
             ]
-        }
+        },
+        {
+            "name": "VeraDev0",
+            "link": "https://github.com/VeraDev0",
+            "mods": [
+                {
+                    "name": "No Auto Smart Physics",
+                    "authors": [
+                        "VeraDev0"
+                    ],
+                    "description": "Prevent Scrap Mechanic from automaticly changing your physics quality to Smart if too laggy.",
+                    "repo": "https://github.com/VeraDev0/SM-NoAutoSmartPhysics",
+                    "dependencies": [],
+                    "tag": "v1.1",
+                    "files": [
+                        "SM-NoAutoSmartPhysics.dll"
+                    ],
+                    "supported": "v0.7.2.775"
+                }
+            ]
+        },
     ]
 }

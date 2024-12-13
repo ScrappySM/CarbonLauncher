@@ -223,13 +223,7 @@ void _GUI() {
 				}
 				else {
 					C.gameManager.StartGame();
-
-					while (!C.gameManager.IsGameRunning()) {
-						std::this_thread::sleep_for(std::chrono::milliseconds(100));
-					}
-
 					std::this_thread::sleep_for(std::chrono::seconds(1));
-
 					C.gameManager.InjectModule(Utils::GetCurrentModuleDir() + "CarbonSupervisor.dll");
 				}
 			}
@@ -238,8 +232,6 @@ void _GUI() {
 		}
 
 		if (ImGui::BeginTabItem("Public mods")) {
-			//ImGui::Text("Mods here");
-
 			ImGui::Columns(3, "modColumns", false);
 			for (auto& repo : C.repoManager.GetRepos()) {
 				// Layout:

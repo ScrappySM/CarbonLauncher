@@ -28,7 +28,9 @@ namespace Carbon {
 		// @param modulePath The path to the module to inject
 		void InjectModule(const std::string& modulePath);
 
-		// Starts the game
+		// Starts the game and waits for it to be running
+		// This function will block until the game is running
+		// This function spawns a new thread to actually start the game process
 		void StartGame();
 
 		// Stops the game forcefully
