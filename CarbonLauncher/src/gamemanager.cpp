@@ -91,6 +91,8 @@ GameManager::GameManager() {
 		}
 		});
 
+	this->gameStatusThread.detach();
+
 	this->moduleHandlerThread = std::thread([this]() {
 		while (true) {
 			std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -125,11 +127,11 @@ GameManager::GameManager() {
 			}
 		}
 	});
+
+	this->moduleHandlerThread.detach();
 }
 
-GameManager::~GameManager() {
-	this->gameStatusThread.join();
-}
+GameManager::~GameManager() { }
 
 bool GameManager::IsGameRunning() {
 	std::lock_guard<std::mutex> lock(this->gameStatusMutex);
@@ -168,15 +170,21 @@ void GameManager::InjectModule(const std::string& modulePath) {
 }
 
 void GameManager::StartGame() {
-	if (C.processTarget == "ScrapMechanic.exe") {
-		ShellExecute(NULL, L"open", L"steam://rungameid/387990", NULL, NULL, SW_SHOWNORMAL);
-		return;
-	}
+	std::thread([]() {
+		if (C.processTarget == "ScrapMechanic.exe") {
+			ShellExecute(NULL, L"open", L"steam://rungameid/387990", NULL, NULL, SW_SHOWNORMAL);
+			return;
+		}
+
+		std::string exePath = Utils::GetCurrentModuleDir() + C.processTarget;
+		ShellExecute(NULL, L"open", std::wstring(exePath.begin(), exePath.end()).c_str(), NULL, NULL, SW_SHOWNORMAL);
+		}).detach();
 
 	this->gameStartedTime = std::chrono::system_clock::now();
 
-	std::string exePath = Utils::GetCurrentModuleDir() + C.processTarget;
-	ShellExecute(NULL, L"open", std::wstring(exePath.begin(), exePath.end()).c_str(), NULL, NULL, SW_SHOWNORMAL);
+	while (!this->IsGameRunning()) {
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	}
 }
 
 void GameManager::KillGame() {
@@ -201,6 +209,10 @@ void GameManager::KillGame() {
 		}
 	} while (Process32Next(snapshot, &entry));
 	CloseHandle(snapshot);
+
+	while (this->IsGameRunning()) {
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	}
 }
 
 bool GameManager::IsModuleLoaded(const std::string& moduleName) {

@@ -179,8 +179,8 @@ void _GUI() {
 						// Go to bottom of child window
 						ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetContentRegionAvail().y - ImGui::GetTextLineHeightWithSpacing() - ImGui::GetStyle().ItemSpacing.y);
 
-						int frameWidth = ImGui::GetContentRegionAvail().x;
-						if (ImGui::Button("Uninstall", ImVec2(frameWidth, 0))) {
+						int frameWidth = (int)ImGui::GetContentRegionAvail().x;
+						if (ImGui::Button("Uninstall", ImVec2((float)frameWidth, 0))) {
 							if (C.gameManager.IsGameRunning()) {
 								spdlog::error("TODO: Unload the mod from the game (ctx: tried to uninstall mod while game was running)");
 								return;
@@ -215,9 +215,9 @@ void _GUI() {
 			ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 32);
 
 			// Big centered start/kill game button
-			int width = (ImGui::GetWindowWidth() * 2 / 3); // 2/3 of the window width
+			int width = (int)(ImGui::GetWindowWidth() * 2 / 3); // 2/3 of the window width
 			ImGui::SetCursorPosX((ImGui::GetWindowWidth() - width) / 2);
-			if (ImGui::Button(C.gameManager.IsGameRunning() ? "Kill Game" : "Start Game", ImVec2(width, 40))) {
+			if (ImGui::Button(C.gameManager.IsGameRunning() ? "Kill Game" : "Start Game", ImVec2((float)width, 40))) {
 				if (C.gameManager.IsGameRunning()) {
 					C.gameManager.KillGame();
 				}

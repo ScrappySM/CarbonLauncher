@@ -49,10 +49,17 @@ namespace Carbon {
 
 	class RepoManager {
 	public:
+		// Initializes the RepoManager and downloads the repos.json file
 		RepoManager();
 		~RepoManager();
 
+		// Converts a JSON object to a Repo object
+		// @param json The JSON object to convert
+		// @return The converted Repo object (`json` -> `Repo`)
 		std::vector<Repo> URLToRepos(const std::string& url);
+
+		// Gets all the repos
+		// @return A vector of all the repos
 		std::vector<Repo>& GetRepos() { return repos; }
 
 	private:

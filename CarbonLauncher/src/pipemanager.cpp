@@ -114,12 +114,11 @@ PipeManager::PipeManager() {
 			}
 		}
 	});
+
+	this->pipeReader.detach();
 }
 
-PipeManager::~PipeManager() {
-	this->pipeReader.join();
-	this->packets = {};
-}
+PipeManager::~PipeManager() { }
 
 std::queue<Packet> PipeManager::GetPacketsByType(PacketType packet) {
 	std::queue<Packet> filteredPackets;

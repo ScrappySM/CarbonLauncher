@@ -7,17 +7,11 @@
 #include <string>
 
 namespace Carbon::Utils {
-	/*
-	 * Get the current module path
-	 *
-	 * @return The current module path
-	 */
+	// Get the current module path
+	// @return The current module path
 	std::string GetCurrentModulePath();
 
-	/*
-	 * Get the current module directory
-	 *
-	 * @return The current module directory
-	 */
+	// Get the current module directory
+	// @return The current module directory
 	std::string GetCurrentModuleDir();
 }; // namespace Carbon::Utils

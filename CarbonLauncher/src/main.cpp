@@ -26,10 +26,11 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 	spdlog::set_default_logger(console);               // Set the default logger to the console logger
     console->set_level(spdlog::level::trace);           // Set the log level to info
 
+	// Tell windows this program isn't important, so other processes can use more resources
+	SetPriorityClass(GetCurrentProcess(), IDLE_PRIORITY_CLASS);
+
 	C.guiManager.RenderCallback(_GUI);
 	C.guiManager.Run();
-
-	std::this_thread::sleep_for(std::chrono::seconds(5));
 
 	FreeConsole();
 
