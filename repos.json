@@ -6,61 +6,67 @@
             "mods": [
                 {
                     "name": "Networking Fix",
-                    "authors": ["QuestionableM", "ColdMeekly"],
+                    "authors": [
+                        "QuestionableM",
+                        "ColdMeekly"
+                    ],
                     "description": "Stops Scrap Mechanic client from stalling packets. Fixes pretty much all the networking issues.",
                     "repo": "https://github.com/Scrap-Mods/networking-fix",
                     "dependencies": [],
-
-										"tag": "v1.0.2",
-                    "files": ["NetworkingFix.dll"],
-
-                    "supported": "v0.7.2.775",
-                },
+                    "tag": "v1.0.3",
+                    "files": [
+                        "NetworkingFix.dll"
+                    ],
+                    "supported": "v0.7.2.775"
+                }
             ]
         },
-
         {
             "name": "QuestionableM",
             "link": "https://github.com/QuestionableM",
             "mods": [
                 {
                     "name": "Proximity Voice Chat",
-                    "authors": ["QuestionableM"],
+                    "authors": [
+                        "QuestionableM"
+                    ],
                     "description": "A Scrap Mechanic DLL mod which adds the Proximity Voice Chat into the game",
                     "repo": "https://github.com/QuestionableM/SM-ProximityVoiceChat",
                     "dependencies": [],
-
-										"tag": "v1.3.2",
-                    "files": ["SM-ProximityVoiceChat.dll"],
-
-                    "supported": "v0.7.2.775",
+                    "tag": "v1.3.3",
+                    "files": [
+                        "SM-ProximityVoiceChat.dll"
+                    ],
+                    "supported": "v0.7.2.775"
                 },
-
                 {
                     "name": "Better Paint Tool",
-                    "authors": ["QuestionableM"],
+                    "authors": [
+                        "QuestionableM"
+                    ],
                     "description": "A DLL mod for Scrap Mechanic which enhances the functionality of the vanilla Paint Tool and allows you to pick any color you want!",
                     "repo": "https://github.com/QuestionableM/SM-BetterPaintTool",
                     "dependencies": [],
-
-										"tag": "v1.5.3",
-                    "urls": ["SM-BetterPaintTool.dll"],
-
-                    "supported": "v0.7.2.775",
+                    "tag": "v1.5.4",
+                    "files": [
+                        "SM-BetterPaintTool.dll"
+                    ],
+                    "supported": "v0.7.2.775"
                 },
-
                 {
                     "name": "Dynamic Sun",
-                    "authors": ["QuestionableM"],
+                    "authors": [
+                        "QuestionableM"
+                    ],
                     "description": "A Scrap Mechanic DLL mod which makes the sun dynamic!",
                     "repo": "https://github.com/QuestionableM/SM-DynamicSun",
                     "dependencies": [],
-
-										"tag": "v1.1.3",
-                    "urls": ["DynamicSun.dll"],
-
-                    "supported": "v0.7.2.775",
-                },
+                    "tag": "v1.1.4",
+                    "files": [
+                        "DynamicSun.dll"
+                    ],
+                    "supported": "v0.7.2.775"
+                }
             ]
         }
     ]
