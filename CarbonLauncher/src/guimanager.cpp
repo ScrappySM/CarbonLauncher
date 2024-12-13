@@ -8,14 +8,18 @@
 #include "state.h"
 
 #include <Windows.h>
-
+#include <TlHelp32.h>
+#include <shellapi.h>
 #include <dwmapi.h>
 
+#include <cpr/cpr.h>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
 #include <spdlog/spdlog.h>
+#include <fmt/format.h>
+#include <fmt/ranges.h>
 
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -23,7 +27,7 @@
 
 using namespace Carbon;
 
-GUIManager::GUIManager() {
+GUIManager::GUIManager() : renderCallback(nullptr), window(nullptr) {
     // Initialize GLFW
     if (!glfwInit()) {
         MessageBox(NULL, L"GLFW Initialization Failed!", L"Error!", MB_ICONEXCLAMATION | MB_OK);
@@ -65,8 +69,22 @@ GUIManager::GUIManager() {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO();
-	(void)io;
+
 	ImGui::StyleColorsDark();
+
+	// Round everything, disable some frames
+	ImGuiStyle& style = ImGui::GetStyle();
+	style.WindowRounding = 4.0f;
+	style.FrameRounding = 4.0f;
+	style.GrabRounding = 4.0f;
+	style.TabRounding = 4.0f;
+	style.ChildRounding = 4.0f;
+	style.PopupRounding = 4.0f;
+	style.ScrollbarRounding = 4.0f;
+	style.FrameBorderSize = 0.0f;
+	style.WindowBorderSize = 0.0f;
+	style.PopupBorderSize = 0.0f;
+	style.TabBorderSize = 0.0f;
 
 	io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\seguisb.ttf", 18.0f);
 
@@ -134,50 +152,213 @@ void _GUI() {
 	if (ImGui::BeginTabBar("CarbonTabs", ImGuiTabBarFlags_None)) {
 		// Begin the first tab
 		if (ImGui::BeginTabItem("Home")) {
-			if (C.gameManager.IsGameRunning()) {
-				if (ImGui::Button("Kill game"))
-					C.gameManager.KillGame();
+			// Show each installed mod in a child window that spans the entire width of the window
+			for (auto& repo : C.repoManager.GetRepos()) {
+				for (auto& mod : repo.mods) {
+					if (mod.installed) {
+						ImGui::BeginChild(mod.name.c_str(), ImVec2(0, 150), true);
+						ImGui::TextWrapped(mod.name.c_str());
+						ImGui::Separator();
+						ImGui::TextWrapped(mod.description.c_str());
+						ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 8);
 
-				ImGui::SameLine();
+						std::string authText = mod.authors.size() > 1 ? "Authors: " : "Author: ";
+						ImGui::TextWrapped(authText.c_str());
+						ImGui::SameLine();
+						for (auto& author : mod.authors) {
+							std::string link = fmt::format("https://github.com/{}", author);
+							if (ImGui::Button(fmt::format("@{} ", author).c_str())) {
+								ShellExecute(NULL, L"open", std::wstring(link.begin(), link.end()).c_str(), NULL, NULL, SW_SHOWNORMAL);
+							}
 
-				if (ImGui::Button("Inject")) {
-					std::string modulePath = Utils::GetCurrentModuleDir() + "CarbonSupervisor.dll";
-					C.gameManager.InjectModule(modulePath);
+							if (author != mod.authors.back()) {
+								ImGui::SameLine();
+							}
+						}
+
+						// Go to bottom of child window
+						ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetContentRegionAvail().y - ImGui::GetTextLineHeightWithSpacing() - ImGui::GetStyle().ItemSpacing.y);
+
+						int frameWidth = ImGui::GetContentRegionAvail().x;
+						if (ImGui::Button("Uninstall", ImVec2(frameWidth, 0))) {
+							if (C.gameManager.IsGameRunning()) {
+								spdlog::error("TODO: Unload the mod from the game (ctx: tried to uninstall mod while game was running)");
+								return;
+							}
+
+							std::string modulesDir = Utils::GetCurrentModuleDir() + "modules\\";
+							std::string modFile = modulesDir + repo.name + "\\" + mod.files[0];
+							std::string tagFile = modulesDir + repo.name + "\\" + mod.files[0].substr(0, mod.files[0].size() - 3) + "tag";
+
+							std::filesystem::remove(modFile);
+							std::filesystem::remove(tagFile);
+
+							mod.installed = false;
+						}
+
+						ImGui::EndChild();
+					}
 				}
 			}
-			else {
-				static bool dummyGame = true;
-				if (ImGui::Checkbox("Dummy-game", &dummyGame)) {
-					if (dummyGame) {
-						C.processTarget = "DummyGame.exe";
-					}
-					else {
-						C.processTarget = "ScrapMechanic.exe";
-					}
+
+			// If no mods are installed, show a message
+			if (std::all_of(C.repoManager.GetRepos().begin(), C.repoManager.GetRepos().end(), [](const Repo& repo) {
+				return std::all_of(repo.mods.begin(), repo.mods.end(), [](const Mod& mod) {
+					return !mod.installed;
+					});
+				})) {
+
+				ImGui::TextWrapped("No mods installed :(");
+				ImGui::TextWrapped("Check out the public mods tab to get started!");
+			}
+
+			ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 32);
+
+			// Big centered start/kill game button
+			int width = (ImGui::GetWindowWidth() * 2 / 3); // 2/3 of the window width
+			ImGui::SetCursorPosX((ImGui::GetWindowWidth() - width) / 2);
+			if (ImGui::Button(C.gameManager.IsGameRunning() ? "Kill Game" : "Start Game", ImVec2(width, 40))) {
+				if (C.gameManager.IsGameRunning()) {
+					C.gameManager.KillGame();
 				}
-
-				static bool injectOnStart = false;
-				ImGui::Checkbox("Inject on start", &injectOnStart);
-
-				if (ImGui::Button("Start game")) {
+				else {
 					C.gameManager.StartGame();
 
-					while (!C.gameManager.IsGameRunning())
+					while (!C.gameManager.IsGameRunning()) {
 						std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-					if (injectOnStart) {
-						std::string modulePath = Utils::GetCurrentModuleDir() + "CarbonSupervisor.dll";
-						C.gameManager.InjectModule(modulePath);
 					}
+
+					std::this_thread::sleep_for(std::chrono::seconds(1));
+
+					C.gameManager.InjectModule(Utils::GetCurrentModuleDir() + "CarbonSupervisor.dll");
 				}
 			}
 
 			ImGui::EndTabItem();
 		}
+
+		if (ImGui::BeginTabItem("Public mods")) {
+			//ImGui::Text("Mods here");
+
+			ImGui::Columns(3, "modColumns", false);
+			for (auto& repo : C.repoManager.GetRepos()) {
+				// Layout:
+				// | mod | mod | mod |
+				// | mod |
+
+				for (auto& mod : repo.mods) {
+					ImGui::BeginChild(mod.name.c_str(), ImVec2(0, 300), true);
+
+					ImGui::TextWrapped(mod.name.c_str());
+					ImGui::Separator();
+					ImGui::TextWrapped(mod.description.c_str());
+
+					ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 8);
+					
+					if (mod.authors.size() > 1) {
+						ImGui::TextWrapped("Authors: ");
+						ImGui::SameLine();
+
+						for (auto& author : mod.authors) {
+							std::string link = "https://github.com/" + author;
+							std::string text = "@" + author + " ";
+
+							if (ImGui::Button(text.c_str())) {
+								ShellExecute(NULL, L"open", std::wstring(link.begin(), link.end()).c_str(), NULL, NULL, SW_SHOWNORMAL);
+							}
+
+							ImGui::PopStyleColor();
+
+							if (author != mod.authors.back()) {
+								ImGui::SameLine();
+							}
+						}
+					}
+					else {
+						ImGui::TextWrapped("Author: ");
+						ImGui::SameLine();
+
+						std::string link = "https://github.com/" + mod.authors[0];
+						std::string text = "@" + mod.authors[0] + " ";
+
+						if (ImGui::Button(text.c_str())) {
+							ShellExecute(NULL, L"open", std::wstring(link.begin(), link.end()).c_str(), NULL, NULL, SW_SHOWNORMAL);
+						}
+					}
+	
+					// Set ImGui cursor y pos to bottom of child window
+					ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetContentRegionAvail().y - ImGui::GetTextLineHeightWithSpacing() - ImGui::GetStyle().ItemSpacing.y);
+
+					if (ImGui::Button(mod.installed ? "Uninstall" : "Install")) {
+						if (mod.installed) {
+							if (C.gameManager.IsGameRunning()) {
+								spdlog::error("TODO: Unload the mod from the game (ctx: tried to uninstall mod while game was running)");
+								return;
+							}
+
+							std::string modulesDir = Utils::GetCurrentModuleDir() + "modules\\";
+							std::string modFile = modulesDir + repo.name + "\\" + mod.files[0];
+							std::string tagFile = modulesDir + repo.name + "\\" + mod.files[0].substr(0, mod.files[0].size() - 3) + "tag";
+
+							std::filesystem::remove(modFile);
+							std::filesystem::remove(tagFile);
+
+							mod.installed = false;
+						}
+						else {
+							// Set the mod to installed for now... (we will set it to false if the download fails)
+							// This is so the UI feels responsive, it shouldn't cause any issues
+							mod.installed = true;
+
+							std::filesystem::create_directory(Utils::GetCurrentModuleDir() + "modules");
+							std::filesystem::create_directory(Utils::GetCurrentModuleDir() + "modules\\" + repo.name);
+
+							std::thread([&]() {
+								// Download the mods
+								// TODO: error handling in http
+								for (auto& file : mod.files) {
+									std::string url = mod.repo + "/releases/download/" + mod.tag + "/" + file;
+									std::string path = Utils::GetCurrentModuleDir() + "modules\\" + repo.name + "\\" + file;
+									cpr::Response response = cpr::Get(cpr::Url{ url });
+									if (response.status_code != 200) {
+										mod.installed = false;
+										return;
+									}
+
+									std::ofstream out(path, std::ios::binary);
+									out << response.text;
+									out.close();
+
+									std::string fileNoExt = file.substr(0, file.find_last_of('.'));
+									std::string tagPath = Utils::GetCurrentModuleDir() + "modules\\" + repo.name + "\\" + fileNoExt + ".tag";
+									std::ofstream tagOut(tagPath);
+
+									tagOut << mod.tag;
+									tagOut.close();
+								}
+
+								// Set the mod as installed
+								mod.installed = true;
+								}).detach();
+						}
+					}
+
+					ImGui::EndChild();
+
+					ImGui::NextColumn();
+				}
+			}
+
+			ImGui::Columns(1);
+
+			ImGui::EndTabItem();
+		}
+
 		// Begin the second tab
 		if (ImGui::BeginTabItem("Settings")) {
 			ImGui::EndTabItem();
 		}
+
 		ImGui::EndTabBar();
 	}
 

@@ -16,6 +16,8 @@ using namespace Carbon;
 
 GameManager::GameManager() {
 	this->gameStatusThread = std::thread([this]() {
+		std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
 		while (true) {
 			std::this_thread::sleep_for(std::chrono::seconds(1));
 
@@ -99,7 +101,11 @@ GameManager::GameManager() {
 					std::string modulesDir = Utils::GetCurrentModuleDir() + "modules";
 					std::filesystem::create_directory(modulesDir);
 
-					for (auto& module : std::filesystem::directory_iterator(modulesDir)) {
+					// Alternative recursive implementation
+					for (auto& module : std::filesystem::recursive_directory_iterator(modulesDir)) {
+						if (!module.is_regular_file() || module.path().extension() != ".dll")
+							continue; // Skip directories and non-DLL files
+
 						bool found = false;
 						for (auto& foundModule : this->modules) {
 							if (std::wstring(module.path().filename().wstring()) == foundModule.szModule) {
@@ -195,4 +201,33 @@ void GameManager::KillGame() {
 		}
 	} while (Process32Next(snapshot, &entry));
 	CloseHandle(snapshot);
+}
+
+bool GameManager::IsModuleLoaded(const std::string& moduleName) {
+	for (auto& module : this->modules) {
+		if (std::wstring(module.szModule) == std::wstring(moduleName.begin(), moduleName.end())) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+std::vector<std::string> GameManager::GetLoadedCustomModules() {
+	std::lock_guard<std::mutex> lock(this->gameStatusMutex);
+
+	// We need to go through all repos and all their mods, incrementing module count
+	// if one of their files is found in the target process
+	std::vector<std::string> loadedModules;
+	for (auto& repo : C.repoManager.GetRepos()) {
+		for (auto& mod : repo.mods) {
+			for (auto& file : mod.files) {
+				if (this->IsModuleLoaded(file)) {
+					loadedModules.push_back(mod.name);
+				}
+			}
+		}
+	}
+
+	return loadedModules;
 }

@@ -3,6 +3,7 @@
 #include "state.h"
 
 #include <spdlog/spdlog.h>
+#include <fmt/format.h>
 
 constexpr auto discordClientId = 1315436867545595904;
 
@@ -118,16 +119,17 @@ void DiscordManager::Update() {
 
 		switch (state) {
 		case 1:
-			spdlog::trace("Loading into a game...");
-			this->UpdateState("Loading into a game...");
+			spdlog::trace("In a loading screen");
+			this->UpdateState("In a loading screen");
 			break;
 		case 2:
 			spdlog::trace("In a game!");
-			this->UpdateState("In a game!");
+
+			this->UpdateState(fmt::format("In a game! ({} mods loaded)", (int)C.gameManager.GetLoadedCustomModules().size()));
 			break;
 		case 3:
 			spdlog::trace("In the main menu");
-			this->UpdateState("In the main menu");
+			this->UpdateState(fmt::format("In the main menu with {} mods loaded", (int)C.gameManager.GetLoadedCustomModules().size()));
 			break;
 		};
 

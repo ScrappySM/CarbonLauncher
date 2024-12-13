@@ -1,5 +1,7 @@
 {
   "dependencies": [
+    "cpr",
+    "discord-game-sdk",
     {
       "name": "glad",
       "features": [
@@ -15,6 +17,6 @@
       ]
     },
     "spdlog",
-    "discord-game-sdk"
+    "nlohmann-json"
   ]
 }

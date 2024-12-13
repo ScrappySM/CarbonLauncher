@@ -23,6 +23,9 @@ namespace Carbon {
 		void StartGame();
 		void KillGame();
 
+		bool IsModuleLoaded(const std::string& moduleName);
+		std::vector<std::string> GetLoadedCustomModules();
+
 		// TODO: Send a message to the
 		// supervisor to stop the game
 		// void StopGame();
