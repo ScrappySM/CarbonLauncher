@@ -88,6 +88,9 @@ GameManager::GameManager() {
 				this->gameStartedTime = std::nullopt;
 				this->pid = 0;
 			}
+
+			// Allow the thread some breathing room
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		}
 		});
 

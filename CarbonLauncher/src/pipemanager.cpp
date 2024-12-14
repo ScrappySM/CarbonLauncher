@@ -112,6 +112,9 @@ PipeManager::PipeManager() {
 				std::lock_guard<std::mutex> lock(this->pipeMutex);
 				this->packets.push_back(parsedPacket);
 			}
+
+			// Allow the thread some breathing room
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		}
 	});
 
