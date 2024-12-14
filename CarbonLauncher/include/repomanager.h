@@ -4,6 +4,7 @@
 
 #include <vector>
 #include <string>
+#include <mutex>
 
 constexpr const char* REPOS_URL = "https://github.com/ScrappySM/CarbonLauncher/raw/refs/heads/main/repos.json";
 
@@ -18,22 +19,16 @@ namespace Carbon {
 		// A short description of the mod
 		std::string description;
 
-		// The link to the GitHub repo of the mod
-		std::string repo;
-
-		// A list of all the dependencies of the mod
-		std::vector<std::string> dependencies;
-
-		// The git repo tag to download
-		std::string tag;
-
-		// A list of all the files to download from the GitHub releases
-		std::vector<std::string> files;
-
-		// The supported game version
-		std::string supported;
+		// The link to the mods GitHub page
+		std::string user;
+		std::string repoName;
 
 		bool installed = false;
+		bool wantsUpdate = false;
+
+		void Install();
+		void Uninstall();
+		void Update();
 	};
 
 	struct Repo {
@@ -56,14 +51,21 @@ namespace Carbon {
 		// Converts a JSON object to a Repo object
 		// @param json The JSON object to convert
 		// @return The converted Repo object (`json` -> `Repo`)
-		std::vector<Repo> URLToRepos(const std::string& url);
+		std::vector<Mod> URLToMods(const std::string& url);
 
 		// Gets all the repos
 		// @return A vector of all the repos
-		std::vector<Repo>& GetRepos() { return repos; }
+		std::vector<Mod>& GetMods() {
+			std::lock_guard<std::mutex> lock(this->repoMutex);
+			return this->mods;
+		}
+
+		bool hasLoaded = false;
 
 	private:
-		Repo JSONToRepo(nlohmann::json json);
-		std::vector<Repo> repos = {};
+		std::vector<Mod> mods;
+
+		std::optional<Mod> JSONToMod(const nlohmann::json& jMod);
+		std::mutex repoMutex;
 	};
 }; // namespace Carbon

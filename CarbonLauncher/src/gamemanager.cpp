@@ -103,10 +103,9 @@ GameManager::GameManager() {
 				if (!C.pipeManager.GetPacketsByType(PacketType::LOADED).empty()) {
 					spdlog::info("Game loaded, injecting modules");
 
-					std::string modulesDir = Utils::GetCurrentModuleDir() + "modules";
+					std::string modulesDir = Utils::GetCurrentModuleDir() + "mods";
 					std::filesystem::create_directory(modulesDir);
 
-					// Alternative recursive implementation
 					for (auto& module : std::filesystem::recursive_directory_iterator(modulesDir)) {
 						if (!module.is_regular_file() || module.path().extension() != ".dll")
 							continue; // Skip directories and non-DLL files
@@ -234,6 +233,8 @@ std::vector<std::string> GameManager::GetLoadedCustomModules() {
 	// We need to go through all repos and all their mods, incrementing module count
 	// if one of their files is found in the target process
 	std::vector<std::string> loadedModules;
+
+	/* TODO: Implement this
 	for (auto& repo : C.repoManager.GetRepos()) {
 		for (auto& mod : repo.mods) {
 			for (auto& file : mod.files) {
@@ -242,7 +243,7 @@ std::vector<std::string> GameManager::GetLoadedCustomModules() {
 				}
 			}
 		}
-	}
+	}*/
 
 	return loadedModules;
 }
