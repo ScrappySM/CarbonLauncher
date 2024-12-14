@@ -1,93 +1,59 @@
 {
-    "repositories": [
+    "mods": [
         {
-            "name": "Scrap-Mods",
-            "link": "https://github.com/Scrap-Mod",
-            "mods": [
-                {
-                    "name": "Networking Fix",
-                    "authors": [
-                        "QuestionableM",
-                        "ColdMeekly"
-                    ],
-                    "description": "Stops Scrap Mechanic client from stalling packets. Fixes pretty much all the networking issues.",
-                    "repo": "https://github.com/Scrap-Mods/networking-fix",
-                    "dependencies": [],
-                    "tag": "v1.0.3",
-                    "files": [
-                        "NetworkingFix.dll"
-                    ],
-                    "supported": "v0.7.2.775"
-                }
-            ]
+            "name": "Networking Fix",
+            "description": "Stops Scrap Mechanic client from stalling packets. Fixes pretty much all the networking issues.",
+            "authors": [
+                "QuestionableM",
+                "ColdMeekly"
+            ],
+
+            "ghUser": "Scrap-Mods",
+            "ghRepo": "Networking-Fix"
         },
         {
-            "name": "QuestionableM",
-            "link": "https://github.com/QuestionableM",
-            "mods": [
-                {
-                    "name": "Proximity Voice Chat",
-                    "authors": [
-                        "QuestionableM"
-                    ],
-                    "description": "A Scrap Mechanic DLL mod which adds the Proximity Voice Chat into the game",
-                    "repo": "https://github.com/QuestionableM/SM-ProximityVoiceChat",
-                    "dependencies": [],
-                    "tag": "v1.3.3",
-                    "files": [
-                        "SM-ProximityVoiceChat.dll"
-                    ],
-                    "supported": "v0.7.2.775"
-                },
-                {
-                    "name": "Better Paint Tool",
-                    "authors": [
-                        "QuestionableM"
-                    ],
-                    "description": "A DLL mod for Scrap Mechanic which enhances the functionality of the vanilla Paint Tool and allows you to pick any color you want!",
-                    "repo": "https://github.com/QuestionableM/SM-BetterPaintTool",
-                    "dependencies": [],
-                    "tag": "v1.5.4",
-                    "files": [
-                        "SM-BetterPaintTool.dll"
-                    ],
-                    "supported": "v0.7.2.775"
-                },
-                {
-                    "name": "Dynamic Sun",
-                    "authors": [
-                        "QuestionableM"
-                    ],
-                    "description": "A Scrap Mechanic DLL mod which makes the sun dynamic!",
-                    "repo": "https://github.com/QuestionableM/SM-DynamicSun",
-                    "dependencies": [],
-                    "tag": "v1.1.4",
-                    "files": [
-                        "DynamicSun.dll"
-                    ],
-                    "supported": "v0.7.2.775"
-                }
-            ]
+            "name": "Proximity Voice Chat",
+            "description": "A Scrap Mechanic DLL mod which adds the Proximity Voice Chat into the game",
+            "authors": [
+                "QuestionableM"
+            ],
+
+            "ghUser": "QuestionableM",
+            "ghRepo": "SM-ProximityVoiceChat"
         },
         {
-            "name": "VeraDev0",
-            "link": "https://github.com/VeraDev0",
-            "mods": [
-                {
-                    "name": "No Auto Smart Physics",
-                    "authors": [
-                        "VeraDev0"
-                    ],
-                    "description": "Prevent Scrap Mechanic from automaticly changing your physics quality to Smart if too laggy.",
-                    "repo": "https://github.com/VeraDev0/SM-NoAutoSmartPhysics",
-                    "dependencies": [],
-                    "tag": "v1.1",
-                    "files": [
-                        "SM-NoAutoSmartPhysics.dll"
-                    ],
-                    "supported": "v0.7.2.775"
-                }
-            ]
+            "name": "Better Paint Tool",
+            "description": "A DLL mod for Scrap Mechanic which enhances the functionality of the vanilla Paint Tool and allows you to pick any color you want!",
+            "authors": [
+                "QuestionableM"
+            ],
+
+            "ghUser": "QuestionableM",
+            "ghRepo": "SM-BetterPaintTool"
+        },
+        {
+            "name": "Dynamic Sun",
+            "description": "A Scrap Mechanic DLL mod which makes the sun dynamic!",
+            "authors": [
+                "QuestionableM"
+            ],
+
+            "ghUser": "QuestionableM",
+            "ghRepo": "SM-DynamicSun"
+        },
+        {
+            "name": "No Auto Smart Physics",
+            "description": "Prevent Scrap Mechanic from automaticly changing your physics quality to Smart if too laggy.",
+            "authors": [
+                "VeraDev0"
+            ],
+
+            "ghUser": "VeraDev0",
+            "ghRepo": "SM-NoAutoSmartPhysics"
+        },
+        {
+            "ghUser": "ScrappySM",
+            "ghRepo": "ModTemplate"
         }
     ]
 }

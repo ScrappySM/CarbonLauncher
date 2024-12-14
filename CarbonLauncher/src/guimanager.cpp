@@ -157,62 +157,61 @@ void _GUI() {
 	if (ImGui::BeginTabBar("CarbonTabs", ImGuiTabBarFlags_None)) {
 		// Begin the first tab
 		if (ImGui::BeginTabItem("Home")) {
+			if (!C.repoManager.hasLoaded) {
+				ImGui::TextWrapped("Loading mods...");
+				ImGui::EndTabItem();
+				ImGui::End();
+				return;
+			}
+
 			// Show each installed mod in a child window that spans the entire width of the window
-			for (auto& repo : C.repoManager.GetRepos()) {
-				for (auto& mod : repo.mods) {
-					if (mod.installed) {
-						ImGui::BeginChild(mod.name.c_str(), ImVec2(0, 150), true);
-						ImGui::TextWrapped(mod.name.c_str());
-						ImGui::Separator();
-						ImGui::TextWrapped(mod.description.c_str());
-						ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 8);
+			for (auto& mod : C.repoManager.GetMods()) {
+				if (mod.installed) {
+					ImGui::BeginChild(mod.name.c_str(), ImVec2(0, 150), true);
+					ImGui::TextWrapped(mod.name.c_str());
+					ImGui::Separator();
+					ImGui::TextWrapped(mod.description.c_str());
+					ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 8);
 
-						std::string authText = mod.authors.size() > 1 ? "Authors: " : "Author: ";
-						ImGui::TextWrapped(authText.c_str());
-						ImGui::SameLine();
-						for (auto& author : mod.authors) {
-							std::string link = fmt::format("https://github.com/{}", author);
-							if (ImGui::Button(fmt::format("@{} ", author).c_str())) {
-								ShellExecute(NULL, L"open", std::wstring(link.begin(), link.end()).c_str(), NULL, NULL, SW_SHOWNORMAL);
-							}
-
-							if (author != mod.authors.back()) {
-								ImGui::SameLine();
-							}
+					std::string authText = mod.authors.size() > 1 ? "Authors: " : "Author: ";
+					ImGui::TextWrapped(authText.c_str());
+					ImGui::SameLine();
+					for (auto& author : mod.authors) {
+						std::string link = fmt::format("https://github.com/{}", author);
+						if (ImGui::Button(fmt::format("@{} ", author).c_str())) {
+							ShellExecute(NULL, L"open", std::wstring(link.begin(), link.end()).c_str(), NULL, NULL, SW_SHOWNORMAL);
 						}
 
-						// Go to bottom of child window
-						ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetContentRegionAvail().y - ImGui::GetTextLineHeightWithSpacing() - ImGui::GetStyle().ItemSpacing.y);
-
-						int frameWidth = (int)ImGui::GetContentRegionAvail().x;
-						if (ImGui::Button("Uninstall", ImVec2((float)frameWidth, 0))) {
-							if (C.gameManager.IsGameRunning()) {
-								spdlog::error("TODO: Unload the mod from the game (ctx: tried to uninstall mod while game was running)");
-								return;
-							}
-
-							std::string modulesDir = Utils::GetCurrentModuleDir() + "modules\\";
-							std::string modFile = modulesDir + repo.name + "\\" + mod.files[0];
-							std::string tagFile = modulesDir + repo.name + "\\" + mod.files[0].substr(0, mod.files[0].size() - 3) + "tag";
-
-							std::filesystem::remove(modFile);
-							std::filesystem::remove(tagFile);
-
-							mod.installed = false;
+						if (author != mod.authors.back()) {
+							ImGui::SameLine();
 						}
-
-						ImGui::EndChild();
 					}
+
+					// Go to bottom of child window
+					ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetContentRegionAvail().y - ImGui::GetTextLineHeightWithSpacing() - ImGui::GetStyle().ItemSpacing.y);
+
+					int frameWidth = (int)ImGui::GetContentRegionAvail().x;
+					if (ImGui::Button("Uninstall", ImVec2((float)frameWidth, 0))) {
+						if (C.gameManager.IsGameRunning()) {
+							spdlog::error("TODO: Unload the mod from the game (ctx: tried to uninstall mod while game was running)");
+							return;
+						}
+
+						mod.Uninstall();
+					}
+
+					if (mod.hasUpdate && ImGui::Button("Update")) {
+						mod.Install();
+					}
+					else if (!mod.hasUpdate) {
+						ImGui::Text("No updates");
+					}
+
+					ImGui::EndChild();
 				}
 			}
 
-			// If no mods are installed, show a message
-			if (std::all_of(C.repoManager.GetRepos().begin(), C.repoManager.GetRepos().end(), [](const Repo& repo) {
-				return std::all_of(repo.mods.begin(), repo.mods.end(), [](const Mod& mod) {
-					return !mod.installed;
-					});
-				})) {
-
+			if (std::all_of(C.repoManager.GetMods().begin(), C.repoManager.GetMods().end(), [](const Mod& mod) { return !mod.installed; })) {
 				ImGui::TextWrapped("No mods installed :(");
 				ImGui::TextWrapped("Check out the public mods tab to get started!");
 			}
@@ -237,113 +236,61 @@ void _GUI() {
 		}
 
 		if (ImGui::BeginTabItem("Public mods")) {
-			ImGui::Columns(3, "modColumns", false);
-			for (auto& repo : C.repoManager.GetRepos()) {
-				// Layout:
-				// | mod | mod | mod |
-				// | mod |
+			for (auto& mod : C.repoManager.GetMods()) {
+				ImGui::BeginChild(mod.name.c_str(), ImVec2(0, 300), true);
 
-				for (auto& mod : repo.mods) {
-					ImGui::BeginChild(mod.name.c_str(), ImVec2(0, 300), true);
+				ImGui::TextWrapped(mod.name.c_str());
+				ImGui::Separator();
+				ImGui::TextWrapped(mod.description.c_str());
 
-					ImGui::TextWrapped(mod.name.c_str());
-					ImGui::Separator();
-					ImGui::TextWrapped(mod.description.c_str());
+				ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 8);
 
-					ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 8);
-					
-					if (mod.authors.size() > 1) {
-						ImGui::TextWrapped("Authors: ");
-						ImGui::SameLine();
+				if (mod.authors.size() > 1) {
+					ImGui::TextWrapped("Authors: ");
+					ImGui::SameLine();
 
-						for (auto& author : mod.authors) {
-							std::string link = "https://github.com/" + author;
-							std::string text = "@" + author + " ";
-
-							if (ImGui::Button(text.c_str())) {
-								ShellExecute(NULL, L"open", std::wstring(link.begin(), link.end()).c_str(), NULL, NULL, SW_SHOWNORMAL);
-							}
-
-							ImGui::PopStyleColor();
-
-							if (author != mod.authors.back()) {
-								ImGui::SameLine();
-							}
-						}
-					}
-					else {
-						ImGui::TextWrapped("Author: ");
-						ImGui::SameLine();
-
-						std::string link = "https://github.com/" + mod.authors[0];
-						std::string text = "@" + mod.authors[0] + " ";
+					for (auto& author : mod.authors) {
+						std::string link = "https://github.com/" + author;
+						std::string text = "@" + author + " ";
 
 						if (ImGui::Button(text.c_str())) {
 							ShellExecute(NULL, L"open", std::wstring(link.begin(), link.end()).c_str(), NULL, NULL, SW_SHOWNORMAL);
 						}
-					}
-	
-					// Set ImGui cursor y pos to bottom of child window
-					ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetContentRegionAvail().y - ImGui::GetTextLineHeightWithSpacing() - ImGui::GetStyle().ItemSpacing.y);
 
-					if (ImGui::Button(mod.installed ? "Uninstall" : "Install")) {
-						if (mod.installed) {
-							if (C.gameManager.IsGameRunning()) {
-								spdlog::error("TODO: Unload the mod from the game (ctx: tried to uninstall mod while game was running)");
-								return;
-							}
+						ImGui::PopStyleColor();
 
-							std::string modulesDir = Utils::GetCurrentModuleDir() + "modules\\";
-							std::string modFile = modulesDir + repo.name + "\\" + mod.files[0];
-							std::string tagFile = modulesDir + repo.name + "\\" + mod.files[0].substr(0, mod.files[0].size() - 3) + "tag";
-
-							std::filesystem::remove(modFile);
-							std::filesystem::remove(tagFile);
-
-							mod.installed = false;
-						}
-						else {
-							// Set the mod to installed for now... (we will set it to false if the download fails)
-							// This is so the UI feels responsive, it shouldn't cause any issues
-							mod.installed = true;
-
-							std::filesystem::create_directory(Utils::GetCurrentModuleDir() + "modules");
-							std::filesystem::create_directory(Utils::GetCurrentModuleDir() + "modules\\" + repo.name);
-
-							std::thread([&]() {
-								// Download the mods
-								// TODO: error handling in http
-								for (auto& file : mod.files) {
-									std::string url = mod.repo + "/releases/download/" + mod.tag + "/" + file;
-									std::string path = Utils::GetCurrentModuleDir() + "modules\\" + repo.name + "\\" + file;
-									cpr::Response response = cpr::Get(cpr::Url{ url });
-									if (response.status_code != 200) {
-										mod.installed = false;
-										return;
-									}
-
-									std::ofstream out(path, std::ios::binary);
-									out << response.text;
-									out.close();
-
-									std::string fileNoExt = file.substr(0, file.find_last_of('.'));
-									std::string tagPath = Utils::GetCurrentModuleDir() + "modules\\" + repo.name + "\\" + fileNoExt + ".tag";
-									std::ofstream tagOut(tagPath);
-
-									tagOut << mod.tag;
-									tagOut.close();
-								}
-
-								// Set the mod as installed
-								mod.installed = true;
-								}).detach();
+						if (author != mod.authors.back()) {
+							ImGui::SameLine();
 						}
 					}
-
-					ImGui::EndChild();
-
-					ImGui::NextColumn();
 				}
+				else {
+					ImGui::TextWrapped("Author: ");
+					ImGui::SameLine();
+
+					std::string link = "https://github.com/" + mod.authors[0];
+					std::string text = "@" + mod.authors[0] + " ";
+
+					if (ImGui::Button(text.c_str())) {
+						ShellExecute(NULL, L"open", std::wstring(link.begin(), link.end()).c_str(), NULL, NULL, SW_SHOWNORMAL);
+					}
+				}
+
+				// Set ImGui cursor y pos to bottom of child window
+				ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetContentRegionAvail().y - ImGui::GetTextLineHeightWithSpacing() - ImGui::GetStyle().ItemSpacing.y);
+
+				if (ImGui::Button(mod.installed ? "Uninstall" : "Install")) {
+					if (mod.installed) {
+						mod.Uninstall();
+					}
+					else {
+						mod.Install();
+					}
+				}
+
+				ImGui::EndChild();
+
+				ImGui::NextColumn();
 			}
 
 			ImGui::Columns(1);

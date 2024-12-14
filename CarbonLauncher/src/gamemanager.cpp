@@ -234,6 +234,8 @@ std::vector<std::string> GameManager::GetLoadedCustomModules() {
 	// We need to go through all repos and all their mods, incrementing module count
 	// if one of their files is found in the target process
 	std::vector<std::string> loadedModules;
+
+	/* TODO: Implement this
 	for (auto& repo : C.repoManager.GetRepos()) {
 		for (auto& mod : repo.mods) {
 			for (auto& file : mod.files) {
@@ -242,7 +244,7 @@ std::vector<std::string> GameManager::GetLoadedCustomModules() {
 				}
 			}
 		}
-	}
+	}*/
 
 	return loadedModules;
 }
