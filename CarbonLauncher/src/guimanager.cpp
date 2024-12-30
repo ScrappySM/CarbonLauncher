@@ -221,8 +221,6 @@ void _GUI() {
 				}
 				else {
 					C.gameManager.StartGame();
-					std::this_thread::sleep_for(std::chrono::seconds(1));
-					C.gameManager.InjectModule(Utils::GetCurrentModuleDir() + "CarbonSupervisor.dll");
 				}
 			}
 

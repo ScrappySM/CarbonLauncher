@@ -98,7 +98,7 @@ PipeManager::PipeManager() {
 				continue;
 			}
 
-			spdlog::trace("S-L : `{}` @ {}", !data.empty() ? data : "null", type);
+			spdlog::trace("G-L : `{}` @ {}", !data.empty() ? data : "null", type);
 
 			Packet parsedPacket;
 			parsedPacket.type = packetType;

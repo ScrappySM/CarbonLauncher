@@ -115,7 +115,15 @@ void DiscordManager::Update() {
 			return;
 		}
 
-		int state = std::stoi(packet.data.value());
+		int state = 0;
+		try {
+			state = std::stoi(packet.data.value());
+		}
+		catch (std::invalid_argument& e) {
+			spdlog::error("Failed to parse state change packet: {}", e.what());
+			statePackets.pop();
+			return;
+		}
 
 		switch (state) {
 		case 1:
@@ -125,11 +133,11 @@ void DiscordManager::Update() {
 		case 2:
 			spdlog::trace("In a game!");
 
-			this->UpdateState(fmt::format("In a game! ({} mods loaded)", (int)C.gameManager.GetLoadedCustomModules().size()));
+			this->UpdateState(fmt::format("In a game! ({} mods loaded)", C.gameManager.GetLoadedCustomModules()));
 			break;
 		case 3:
 			spdlog::trace("In the main menu");
-			this->UpdateState(fmt::format("In the main menu with {} mods loaded", (int)C.gameManager.GetLoadedCustomModules().size()));
+			this->UpdateState(fmt::format("In the main menu with {} mods loaded", C.gameManager.GetLoadedCustomModules()));
 			break;
 		};
 

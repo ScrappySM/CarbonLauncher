@@ -52,29 +52,13 @@ GameManager::GameManager() {
 					this->gameStartedTime = std::chrono::system_clock::now();
 				}
 
-				auto hModules = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, entry.th32ProcessID);
-				if (hModules == INVALID_HANDLE_VALUE) {
-					continue;
-				}
-
-				MODULEENTRY32 module{};
-				module.dwSize = sizeof(module);
-
-				if (!Module32First(hModules, &module)) {
-					CloseHandle(hModules);
-					continue;
-				}
-
-				std::vector<MODULEENTRY32> modules;
-				do {
-					modules.push_back(module);
-				} while (Module32Next(hModules, &module));
-
-				CloseHandle(hModules);
-
 				std::lock_guard<std::mutex> lock(this->gameStatusMutex);
+
+				if (found != this->gameRunning) {
+					spdlog::info("Game is {}", found ? "running" : "not running");
+				}
+
 				this->gameRunning = true;
-				this->modules = modules;
 				this->pid = entry.th32ProcessID;
 
 				if (!this->gameStartedTime.has_value()) {
@@ -99,8 +83,40 @@ GameManager::GameManager() {
 	this->moduleHandlerThread = std::thread([this]() {
 		while (true) {
 			std::this_thread::sleep_for(std::chrono::seconds(1));
+			bool hasInjectedAnything = false;
 			if (this->IsGameRunning()) {
 				if (!C.pipeManager.GetPacketsByType(PacketType::LOADED).empty()) {
+					// Get module list
+					auto hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
+					if (!hProcess) {
+						spdlog::error("Failed to open process with PID {}", pid);
+						continue;
+					}
+
+					MODULEENTRY32 moduleEntry{};
+					moduleEntry.dwSize = sizeof(moduleEntry);
+
+					auto hModuleSnap = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, pid);
+					if (hModuleSnap == INVALID_HANDLE_VALUE) {
+						CloseHandle(hProcess);
+						continue;
+					}
+
+					if (!Module32First(hModuleSnap, &moduleEntry)) {
+						CloseHandle(hModuleSnap);
+						CloseHandle(hProcess);
+						continue;
+					}
+
+					do {
+						this->modules.emplace_back(moduleEntry);
+					} while (Module32Next(hModuleSnap, &moduleEntry));
+
+					CloseHandle(hModuleSnap);
+					CloseHandle(hProcess);
+
+					this->modules = modules;
+
 					spdlog::info("Game loaded, injecting modules");
 
 					std::string modulesDir = Utils::GetCurrentModuleDir() + "mods";
@@ -120,10 +136,15 @@ GameManager::GameManager() {
 
 						if (!found) {
 							this->InjectModule(module.path().string());
+							hasInjectedAnything = true;
 						}
 						else {
 							spdlog::warn("Module `{}` is already loaded", module.path().string());
 						}
+					}
+
+					if (hasInjectedAnything) {
+						this->ModulesInjected = true;
 					}
 				}
 			}
@@ -172,21 +193,31 @@ void GameManager::InjectModule(const std::string& modulePath) {
 }
 
 void GameManager::StartGame() {
-	std::thread([]() {
+	this->gameStartedTime = std::nullopt; 
+	this->gameRunning = false;
+	this->pid = 0;
+	this->modules.clear();
+	this->ModulesInjected = false;
+
+	std::thread([&]() {
 		if (C.processTarget == "ScrapMechanic.exe") {
 			ShellExecute(NULL, L"open", L"steam://rungameid/387990", NULL, NULL, SW_SHOWNORMAL);
-			return;
+		}
+		else {
+			std::string exePath = Utils::GetCurrentModuleDir() + C.processTarget;
+			ShellExecute(NULL, L"open", std::wstring(exePath.begin(), exePath.end()).c_str(), NULL, NULL, SW_SHOWNORMAL);
 		}
 
-		std::string exePath = Utils::GetCurrentModuleDir() + C.processTarget;
-		ShellExecute(NULL, L"open", std::wstring(exePath.begin(), exePath.end()).c_str(), NULL, NULL, SW_SHOWNORMAL);
+		while (!this->IsGameRunning()) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		}
+
+		this->gameStartedTime = std::chrono::system_clock::now();
+
+		std::this_thread::sleep_for(std::chrono::seconds(1));
+		spdlog::info("Game is running, injecting CarbonSupervisor.dll");
+		this->InjectModule(Utils::GetCurrentModuleDir() + "CarbonSupervisor.dll");
 		}).detach();
-
-	this->gameStartedTime = std::chrono::system_clock::now();
-
-	while (!this->IsGameRunning()) {
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
-	}
 }
 
 void GameManager::KillGame() {
@@ -217,9 +248,30 @@ void GameManager::KillGame() {
 	}
 }
 
-bool GameManager::IsModuleLoaded(const std::string& moduleName) {
-	for (auto& module : this->modules) {
-		if (std::wstring(module.szModule) == std::wstring(moduleName.begin(), moduleName.end())) {
+bool GameManager::IsModuleLoaded(const std::string& moduleName) const {
+	std::vector<MODULEENTRY32> modules;
+	auto hProcesses = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, this->pid);
+	if (hProcesses == INVALID_HANDLE_VALUE) {
+		return false;
+	}
+
+	MODULEENTRY32 entry{ sizeof(entry) };
+	
+	if (!Module32First(hProcesses, &entry)) {
+		CloseHandle(hProcesses);
+		return false;
+	}
+
+	do {
+		modules.emplace_back(entry);
+	} while (Module32Next(hProcesses, &entry));
+
+	CloseHandle(hProcesses);
+
+	for (auto& module : modules) {
+		std::wstring moduleNameW(module.szModule);
+		std::string moduleNameA(moduleNameW.begin(), moduleNameW.end());
+		if (moduleNameA == moduleName) {
 			return true;
 		}
 	}
@@ -227,23 +279,21 @@ bool GameManager::IsModuleLoaded(const std::string& moduleName) {
 	return false;
 }
 
-std::vector<std::string> GameManager::GetLoadedCustomModules() {
-	std::lock_guard<std::mutex> lock(this->gameStatusMutex);
+int GameManager::GetLoadedCustomModules() {
+	// Wait for injection to happen
+	while (!this->ModulesInjected) {
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	}
 
-	// We need to go through all repos and all their mods, incrementing module count
-	// if one of their files is found in the target process
-	std::vector<std::string> loadedModules;
+	int count = 0;
 
-	/* TODO: Implement this
-	for (auto& repo : C.repoManager.GetRepos()) {
-		for (auto& mod : repo.mods) {
-			for (auto& file : mod.files) {
-				if (this->IsModuleLoaded(file)) {
-					loadedModules.push_back(mod.name);
-				}
+	for (auto& file : std::filesystem::recursive_directory_iterator(Utils::GetCurrentModuleDir() + "mods")) {
+		if (file.is_regular_file() && file.path().extension() == ".dll") {
+			if (this->IsModuleLoaded(file.path().filename().string())) {
+				count++;
 			}
 		}
-	}*/
+	}
 
-	return loadedModules;
+	return count;
 }

@@ -39,11 +39,13 @@ namespace Carbon {
 		// Checks if a module is loaded in the game process
 		// @param moduleName The name of the module to check
 		// @return True if the module is loaded, false otherwise
-		bool IsModuleLoaded(const std::string& moduleName);
+		bool IsModuleLoaded(const std::string& moduleName) const;
 
 		// Gets all the loaded custom modules
 		// @return A vector of all the loaded custom modules (mods injected via CarbonLauncher)
-		std::vector<std::string> GetLoadedCustomModules();
+		int GetLoadedCustomModules();
+
+		bool ModulesInjected = false;
 
 	private:
 		// Checks every 1s if the game is running
