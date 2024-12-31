@@ -45,10 +45,12 @@ std::optional<Mod> RepoManager::JSONToMod(const nlohmann::json& jMod) {
 	bool hasManifest = manifest.status_code == 200;
 
 	Mod mod;
-	mod.user = jMod["ghUser"];
-	mod.repoName = jMod["ghRepo"];
+	mod.ghUser = jMod["ghUser"];
+	mod.ghRepo = jMod["ghRepo"];
 
 	if (hasManifest) {
+		std::string modRepo = jMod["ghRepo"].get<std::string>();
+		spdlog::trace("Mod {} has a manifest.json!", modRepo);
 		auto jManifest = nlohmann::json::parse(manifest.text);
 
 		mod.name = jManifest["name"];
@@ -63,21 +65,20 @@ std::optional<Mod> RepoManager::JSONToMod(const nlohmann::json& jMod) {
 		mod.authors = jMod["authors"].get<std::vector<std::string>>();
 		mod.description = jMod["description"];
 		mod.installed = false;
-
 	}
 
 	// Check if the mod is installed
-	if (std::filesystem::exists(Utils::GetCurrentModuleDir() + "/mods/" + mod.repoName + "/")) {
+	if (std::filesystem::exists(Utils::GetCurrentModuleDir() + "/mods/" + mod.ghRepo)) {
 		mod.installed = true;
 
 		// Check if the mod wants an update
-		std::string tagFile = Utils::GetCurrentModuleDir() + "/mods/" + mod.repoName + "/tag";
+		std::string tagFile = Utils::GetCurrentModuleDir() + "/mods/" + mod.ghRepo + "/tag.txt";
 		std::ifstream file(tagFile);
 		std::string tag;
 		file >> tag;
 		file.close();
 
-		auto latestURL = fmt::format("https://api.github.com/repos/{}/{}/releases/latest", mod.user, mod.repoName);
+		auto latestURL = fmt::format("https://api.github.com/repos/{}/{}/releases/latest", mod.ghUser, mod.ghRepo);
 		auto latest = cpr::Get(cpr::Url{ latestURL }, authHeader);
 
 		auto jContents = nlohmann::json();
@@ -155,65 +156,78 @@ RepoManager::~RepoManager() {
 }
 
 void Mod::Install() {
-	auto contentsURL = fmt::format("https://api.github.com/repos/{}/{}/contents/", this->user, this->repoName);
-	auto latestURL = fmt::format("https://api.github.com/repos/{}/{}/releases/latest", this->user, this->repoName);
-	auto contents = cpr::Get(cpr::Url{ contentsURL }, authHeader);
-	auto latest = cpr::Get(cpr::Url{ latestURL }, authHeader);
+	std::thread([&]() {
+		// Display the mod as already installed to
+		// make the user aware that the mod is being installed
+		this->installed = true;
 
-	auto jContents = nlohmann::json();
-	auto jLatest = nlohmann::json();
+		auto contentsURL = fmt::format("https://api.github.com/repos/{}/{}/contents/", this->ghUser, this->ghRepo);
+		auto latestURL = fmt::format("https://api.github.com/repos/{}/{}/releases/latest", this->ghUser, this->ghRepo);
+		auto contents = cpr::Get(cpr::Url{ contentsURL }, authHeader);
+		auto latest = cpr::Get(cpr::Url{ latestURL }, authHeader);
 
-	try {
-		jContents = nlohmann::json::parse(contents.text);
-		jLatest = nlohmann::json::parse(latest.text);
-	}
-	catch (nlohmann::json::parse_error& e) {
-		spdlog::error("Failed to parse JSON: {}", e.what());
-		return;
-	}
+		auto jContents = nlohmann::json();
+		auto jLatest = nlohmann::json();
 
-	// Find the latest tag
-	std::string tag = jLatest["tag_name"];
-
-	std::unordered_map<std::string, std::string> downloadURLs;
-	for (const auto& asset : jLatest["assets"]) {
 		try {
-			std::string url = asset["browser_download_url"];
-			std::string name = asset["name"];
-			downloadURLs.insert({ name, url });
+			jContents = nlohmann::json::parse(contents.text);
+			jLatest = nlohmann::json::parse(latest.text);
 		}
-		catch (nlohmann::json::exception& e) {
-			spdlog::error("Failed to get browser_download_url: {}", e.what());
-			continue;
+		catch (nlohmann::json::parse_error& e) {
+			spdlog::error("Failed to parse JSON: {}", e.what());
+			this->installed = false;
+			return;
 		}
-	}
 
-	// Download the mod
-	for (const auto& [name, url] : downloadURLs) {
-		auto download = cpr::Get(cpr::Url{ url }, authHeader);
+		// Find the latest tag
+		std::string tag = jLatest["tag_name"];
 
-		// mod dir
-		std::string modDir = Utils::GetCurrentModuleDir() + "/mods/" + this->repoName + "/";
-		std::filesystem::create_directories(modDir);
+		std::unordered_map<std::string, std::string> downloadURLs;
+		for (const auto& asset : jLatest["assets"]) {
+			try {
+				std::string url = asset["browser_download_url"];
+				std::string name = asset["name"];
+				downloadURLs.insert({ name, url });
+			}
+			catch (nlohmann::json::exception& e) {
+				spdlog::error("Failed to get browser_download_url: {}", e.what());
+				continue;
+			}
+		}
 
-		// mod file
-		std::string modFile = modDir + name;
-		std::ofstream file(modFile, std::ios::binary);
-		file << download.text;
+		// Download the mod
+		for (const auto& [name, url] : downloadURLs) {
+			auto download = cpr::Get(cpr::Url{ url }, authHeader);
+
+			if (download.status_code != 200) {
+				spdlog::error("Failed to download mod: {}", download.status_code);
+				this->installed = false;
+				return;
+			}
+
+			// mod dir
+			std::string modDir = Utils::GetCurrentModuleDir() + "/mods/" + this->ghRepo + "/";
+			std::filesystem::create_directories(modDir);
+
+			// mod file
+			std::string modFile = modDir + name;
+			std::ofstream file(modFile, std::ios::binary);
+			file << download.text;
+			file.close();
+
+			spdlog::info("Downloaded: {}", modFile);
+		}
+
+		// Save `tag` file with the tag name
+		std::string tagFile = Utils::GetCurrentModuleDir() + "/mods/" + this->ghRepo + "/tag";
+		std::ofstream file(tagFile);
+		file << tag;
 		file.close();
 
-		spdlog::info("Downloaded: {}", modFile);
-	}
+		this->installed = true;
 
-	// Save `tag` file with the tag name
-	std::string tagFile = Utils::GetCurrentModuleDir() + "/mods/" + this->repoName + "/tag";
-	std::ofstream file(tagFile);
-	file << tag;
-	file.close();
-
-	this->installed = true;
-
-	spdlog::info("Installed: {}", this->name);
+		spdlog::info("Installed: {}", this->name);
+		}).detach();
 }
 
 void Mod::Uninstall() {
@@ -222,7 +236,7 @@ void Mod::Uninstall() {
 		return;
 	}
 
-	std::string modDir = Utils::GetCurrentModuleDir() + "/mods/" + this->repoName + "/";
+	std::string modDir = Utils::GetCurrentModuleDir() + "/mods/" + this->ghRepo + "/";
 	std::filesystem::remove_all(modDir);
 	this->installed = false;
 	spdlog::info("Uninstalled: {}", this->name);
@@ -239,7 +253,7 @@ void Mod::Update() {
 		return;
 	}
 
-	auto latestURL = fmt::format("https://api.github.com/repos/{}/{}/releases/latest", this->user, this->repoName);
+	auto latestURL = fmt::format("https://api.github.com/repos/{}/{}/releases/latest", this->ghUser, this->ghRepo);
 	auto latest = cpr::Get(cpr::Url{ latestURL }, authHeader);
 
 	auto jLatest = nlohmann::json();
@@ -271,7 +285,7 @@ void Mod::Update() {
 	for (const auto& [name, url] : downloadURLs) {
 		auto download = cpr::Get(cpr::Url{ url }, authHeader);
 		// mod dir
-		std::string modDir = Utils::GetCurrentModuleDir() + "/mods/" + this->repoName + "/";
+		std::string modDir = Utils::GetCurrentModuleDir() + "/mods/" + this->ghRepo + "/";
 		std::filesystem::create_directories(modDir);
 		// mod file
 		std::string modFile = modDir + name;
@@ -282,7 +296,7 @@ void Mod::Update() {
 	}
 
 	// Save `tag` file with the tag name
-	std::string tagFile = Utils::GetCurrentModuleDir() + "/mods/" + this->repoName + "/tag";
+	std::string tagFile = Utils::GetCurrentModuleDir() + "/mods/" + this->ghRepo + "/tag";
 	std::ofstream file(tagFile);
 	file << tag;
 	file.close();

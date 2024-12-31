@@ -82,8 +82,6 @@ GameManager::GameManager() {
 
 	this->moduleHandlerThread = std::thread([this]() {
 		while (true) {
-			std::this_thread::sleep_for(std::chrono::seconds(1));
-			bool hasInjectedAnything = false;
 			if (this->IsGameRunning()) {
 				if (!C.pipeManager.GetPacketsByType(PacketType::LOADED).empty()) {
 					// Get module list
@@ -136,18 +134,14 @@ GameManager::GameManager() {
 
 						if (!found) {
 							this->InjectModule(module.path().string());
-							hasInjectedAnything = true;
 						}
 						else {
 							spdlog::warn("Module `{}` is already loaded", module.path().string());
 						}
 					}
-
-					if (hasInjectedAnything) {
-						this->ModulesInjected = true;
-					}
 				}
 			}
+			std::this_thread::sleep_for(std::chrono::seconds(1));
 		}
 	});
 

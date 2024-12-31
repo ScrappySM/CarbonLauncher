@@ -20,8 +20,8 @@ namespace Carbon {
 		std::string description;
 
 		// The link to the mods GitHub page
-		std::string user;
-		std::string repoName;
+		std::string ghUser;
+		std::string ghRepo;
 
 		bool installed = false;
 		bool wantsUpdate = false;

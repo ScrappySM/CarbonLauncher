@@ -3,6 +3,8 @@
 #define GLFW_EXPOSE_NATIVE_WIN32
 #define WIN32_LEAN_AND_MEAN
 
+#include "resource.h"
+
 #include "guimanager.h"
 #include "utils.h"
 #include "state.h"
@@ -22,6 +24,7 @@
 #include <fmt/ranges.h>
 
 #include <imgui.h>
+#include <imgui_internal.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
@@ -75,18 +78,37 @@ GUIManager::GUIManager() : renderCallback(nullptr), window(nullptr) {
 	// Round everything, disable some frames
 	ImGuiStyle& style = ImGui::GetStyle();
 	style.WindowRounding = 4.0f;
+	style.FramePadding = ImVec2(8, 4);
+	style.TabBarBorderSize = 2;
+	style.ScrollbarSize = 10;
 	style.FrameRounding = 4.0f;
 	style.GrabRounding = 4.0f;
-	style.TabRounding = 4.0f;
-	style.ChildRounding = 4.0f;
+	style.TabRounding = 6.0f;
+	style.ChildRounding = 6.0f;
 	style.PopupRounding = 4.0f;
-	style.ScrollbarRounding = 4.0f;
+	style.ScrollbarRounding = 12.0f;
 	style.FrameBorderSize = 0.0f;
 	style.WindowBorderSize = 0.0f;
 	style.PopupBorderSize = 0.0f;
 	style.TabBorderSize = 0.0f;
 
 	io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\seguisb.ttf", 18.0f);
+
+	// Go through every colour and get hsv values, if it's 151 then change it to 0 and then set the colour
+	for (int i = 0; i < ImGuiCol_COUNT; i++) {
+		ImVec4* col = &style.Colors[i];
+		float h, s, v;
+		ImGui::ColorConvertRGBtoHSV(col->x, col->y, col->z, h, s, v);
+		if (h > 0.59 && h < 0.61) {
+			h = 0.0f;
+			s = 0.5f;
+			spdlog::info("Modified colour {}", i);
+		}
+		else {
+			spdlog::info("Colour {} is {}", i, h);
+		}
+		ImGui::ColorConvertHSVtoRGB(h, s, v, col->x, col->y, col->z);
+	}
 
 	ImGui_ImplGlfw_InitForOpenGL(this->window, true);
 	ImGui_ImplOpenGL3_Init("#version 460");
@@ -160,6 +182,7 @@ void _GUI() {
 			if (!C.repoManager.hasLoaded) {
 				ImGui::TextWrapped("Loading mods...");
 				ImGui::EndTabItem();
+				ImGui::EndTabBar();
 				ImGui::End();
 				return;
 			}
@@ -230,72 +253,84 @@ void _GUI() {
 		if (ImGui::BeginTabItem("Public mods")) {
 			ImGui::Columns(3, "modColumns", false);
 			for (auto& mod : C.repoManager.GetMods()) {
+				ImGui::ItemSize(ImVec2(0, 8), 0);
 				// Layout:
 				// | mod | mod | mod |
 				// | mod |
 
-					ImGui::BeginChild(mod.name.c_str(), ImVec2(0, 300), true);
+				ImGui::BeginChild(mod.name.c_str(), ImVec2(0, 200), true);
 
-					ImGui::TextWrapped(mod.name.c_str());
-					ImGui::Separator();
-					ImGui::TextWrapped(mod.description.c_str());
+				ImGui::TextWrapped(mod.name.c_str());
+				ImGui::Separator();
+				ImGui::TextWrapped(mod.description.c_str());
 
-					ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 8);
-					
-					if (mod.authors.size() > 1) {
-						ImGui::TextWrapped("Authors: ");
-						ImGui::SameLine();
+				ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 8);
 
-						for (auto& author : mod.authors) {
-							std::string link = "https://github.com/" + author;
-							std::string text = "@" + author + " ";
+				if (mod.authors.size() > 1) {
+					ImGui::TextWrapped("Authors: ");
+					ImGui::SameLine();
 
-							if (ImGui::Button(text.c_str())) {
-								ShellExecute(NULL, L"open", std::wstring(link.begin(), link.end()).c_str(), NULL, NULL, SW_SHOWNORMAL);
-							}
-
-							ImGui::PopStyleColor();
-
-							if (author != mod.authors.back()) {
-								ImGui::SameLine();
-							}
-						}
-					}
-					else {
-						ImGui::TextWrapped("Author: ");
-						ImGui::SameLine();
-
-						std::string link = "https://github.com/" + mod.authors[0];
-						std::string text = "@" + mod.authors[0] + " ";
+					for (auto& author : mod.authors) {
+						std::string link = "https://github.com/" + author;
+						std::string text = "@" + author + " ";
 
 						if (ImGui::Button(text.c_str())) {
 							ShellExecute(NULL, L"open", std::wstring(link.begin(), link.end()).c_str(), NULL, NULL, SW_SHOWNORMAL);
 						}
-					}
-	
-					// Set ImGui cursor y pos to bottom of child window
-					ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetContentRegionAvail().y - ImGui::GetTextLineHeightWithSpacing() - ImGui::GetStyle().ItemSpacing.y);
 
-					if (ImGui::Button(mod.installed ? "Uninstall" : "Install")) {
-						if (mod.installed) {
-							mod.Uninstall();
-						}
-						else {
-							mod.Install();
+						if (author != mod.authors.back()) {
+							ImGui::SameLine();
 						}
 					}
-
-					if (mod.wantsUpdate) {
-						ImGui::SameLine();
-						if (ImGui::Button("Update")) {
-							mod.Update();
-						}
-					}
-
-					ImGui::EndChild();
-
-					ImGui::NextColumn();
 				}
+				else {
+					ImGui::TextWrapped("Author: ");
+					ImGui::SameLine();
+
+					std::string link = "https://github.com/" + mod.authors[0];
+					std::string text = "@" + mod.authors[0] + " ";
+
+					if (ImGui::Button(text.c_str())) {
+						ShellExecute(NULL, L"open", std::wstring(link.begin(), link.end()).c_str(), NULL, NULL, SW_SHOWNORMAL);
+					}
+				}
+
+				ImGui::TextWrapped("Source: ");
+				ImGui::SameLine();
+				if (ImGui::Button("GitHub")) {
+					std::string link = fmt::format("https://github.com/{}/{}", mod.ghUser, mod.ghRepo);
+					ShellExecute(NULL, L"open", std::wstring(link.begin(), link.end()).c_str(), NULL, NULL, SW_SHOWNORMAL);
+				}
+
+				// Set ImGui cursor y pos to bottom of child window
+				ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetContentRegionAvail().y - ImGui::GetTextLineHeightWithSpacing() - ImGui::GetStyle().ItemSpacing.y);
+
+				if (ImGui::Button(mod.installed ? "Uninstall" : "Install")) {
+					if (mod.installed) {
+						mod.Uninstall();
+					}
+					else {
+						mod.Install();
+					}
+				}
+
+				ImGui::SameLine();
+				if (!mod.wantsUpdate) {
+					ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+					ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+				}
+				if (ImGui::Button(mod.wantsUpdate ? "Update" : "Up to date")) {
+					mod.Update();
+				}
+				if (!mod.wantsUpdate) {
+					ImGui::PopItemFlag();
+					ImGui::PopStyleVar();
+				}
+
+				ImGui::EndChild();
+
+				ImGui::NextColumn();
+			}
 
 			ImGui::Columns(1);
 
