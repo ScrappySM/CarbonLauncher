@@ -33,7 +33,7 @@
         },
         {
             "name": "Dynamic Sun",
-            "description": "A Scrap Mechanic DLL mod which makes the sun dynamic!",
+            "description": "A Scrap Mechanic DLL mod which makes the sun dynamic by letting you adjust the angle!",
             "authors": [
                 "QuestionableM"
             ],
