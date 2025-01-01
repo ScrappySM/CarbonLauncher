@@ -43,9 +43,7 @@ namespace Carbon {
 
 		// Gets all the loaded custom modules
 		// @return A vector of all the loaded custom modules (mods injected via CarbonLauncher)
-		int GetLoadedCustomModules();
-
-		bool ModulesInjected = false;
+		int GetLoadedCustomModules() const;
 
 	private:
 		// Checks every 1s if the game is running
@@ -66,5 +64,8 @@ namespace Carbon {
 
 		// The PID of the game process
 		DWORD pid = 0;
+
+		// Amount of custom modules loaded (excluding the supervisor)
+		std::optional<int> loadedCustomModules = std::nullopt;
 	};
 }; // namespace Carbon

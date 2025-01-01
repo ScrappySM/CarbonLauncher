@@ -10,8 +10,7 @@ namespace Carbon {
 	// Manages the Discord RPC
 	class DiscordManager {
 	public:
-		// Initializes the Discord RPC and starts a thread
-		// listening for game state changes (through PipeManager)
+		// Initializes the Discord RPC
 		DiscordManager();
 		~DiscordManager();
 

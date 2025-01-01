@@ -120,6 +120,7 @@ GameManager::GameManager() {
 					std::string modulesDir = Utils::GetCurrentModuleDir() + "mods";
 					std::filesystem::create_directory(modulesDir);
 
+					int loadedCustomModules = 0;
 					for (auto& module : std::filesystem::recursive_directory_iterator(modulesDir)) {
 						if (!module.is_regular_file() || module.path().extension() != ".dll")
 							continue; // Skip directories and non-DLL files
@@ -134,11 +135,14 @@ GameManager::GameManager() {
 
 						if (!found) {
 							this->InjectModule(module.path().string());
+							loadedCustomModules++;
 						}
 						else {
 							spdlog::warn("Module `{}` is already loaded", module.path().string());
 						}
 					}
+
+					this->loadedCustomModules = loadedCustomModules;
 				}
 			}
 			std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -191,27 +195,31 @@ void GameManager::StartGame() {
 	this->gameRunning = false;
 	this->pid = 0;
 	this->modules.clear();
-	this->ModulesInjected = false;
 
 	std::thread([&]() {
 		if (C.processTarget == "ScrapMechanic.exe") {
 			ShellExecute(NULL, L"open", L"steam://rungameid/387990", NULL, NULL, SW_SHOWNORMAL);
+			spdlog::info("Launching Scrap Mechanic via Steam");
 		}
 		else {
 			std::string exePath = Utils::GetCurrentModuleDir() + C.processTarget;
 			ShellExecute(NULL, L"open", std::wstring(exePath.begin(), exePath.end()).c_str(), NULL, NULL, SW_SHOWNORMAL);
+			spdlog::info("Launching game via ShellExecute");
 		}
 
 		while (!this->IsGameRunning()) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		}
 
-		this->gameStartedTime = std::chrono::system_clock::now();
+		spdlog::info("Game detected as running");
 
+		this->gameStartedTime = std::chrono::system_clock::now();
 		std::this_thread::sleep_for(std::chrono::seconds(1));
-		spdlog::info("Game is running, injecting CarbonSupervisor.dll");
 		this->InjectModule(Utils::GetCurrentModuleDir() + "CarbonSupervisor.dll");
+		spdlog::info("Injected CarbonSupervisor.dll");
 		}).detach();
+
+	spdlog::info("Started game in detached thread");
 }
 
 void GameManager::KillGame() {
@@ -273,11 +281,8 @@ bool GameManager::IsModuleLoaded(const std::string& moduleName) const {
 	return false;
 }
 
-int GameManager::GetLoadedCustomModules() {
-	// Wait for injection to happen
-	while (!this->ModulesInjected) {
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
-	}
+int GameManager::GetLoadedCustomModules() const {
+	/*spdlog::critical("Finished waiting for injection");
 
 	int count = 0;
 
@@ -289,5 +294,12 @@ int GameManager::GetLoadedCustomModules() {
 		}
 	}
 
-	return count;
+	spdlog::critical("{} custom modules loaded", count);
+	return count;*/
+
+	while (!this->loadedCustomModules.has_value()) {
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	}
+
+	return this->loadedCustomModules.value();
 }
