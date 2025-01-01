@@ -46,20 +46,23 @@ DiscordManager::DiscordManager() {
 		activity.SetDetails("https://github.com/ScrappySM/CarbonLauncher!");
 		activity.SetState("In the launcher!");
 
-		activity.GetAssets().SetLargeImage("carbonlauncher");
+		activity.GetAssets().SetLargeImage("icon");
 		activity.GetAssets().SetLargeText("Carbon Launcher");
-		activity.GetAssets().SetSmallImage("carbonlauncher");
-		activity.GetAssets().SetSmallText("Carbon Launcher");
+		/*activity.GetAssets().SetSmallImage("icon");
+		activity.GetAssets().SetSmallText("Carbon Launcher");*/
 
 		activity.SetType(discord::ActivityType::Playing);
-
-		activity.SetSupportedPlatforms((uint32_t)discord::ActivitySupportedPlatformFlags::Desktop);
 
 		this->core->ActivityManager().UpdateActivity(activity, [](discord::Result result) {
 			if (result != discord::Result::Ok) {
 				spdlog::error("Failed to update Discord RPC (error: {})", (int)result);
 			}
 			});
+
+		activity.GetAssets().SetLargeImage("icon");
+		activity.GetAssets().SetLargeText("Carbon Launcher");
+
+		this->UpdateActivity();
 	}
 
 

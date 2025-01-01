@@ -152,6 +152,8 @@
     <ClCompile Include="src\utils.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\font\IconsFontAwesome6.h" />
+    <ClInclude Include="include\font\IconsFontAwesome6.h_fa-solid-900.ttf.h" />
     <ClInclude Include="include\guimanager.h" />
     <ClInclude Include="include\discordmanager.h" />
     <ClInclude Include="include\gamemanager.h" />

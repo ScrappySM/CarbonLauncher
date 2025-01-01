@@ -190,7 +190,7 @@ void GameManager::InjectModule(const std::string& modulePath) {
 	spdlog::info("Injected module `{}`", modulePath);
 }
 
-void GameManager::StartGame() {
+void GameManager::LaunchGame() {
 	this->gameStartedTime = std::nullopt; 
 	this->gameRunning = false;
 	this->pid = 0;
@@ -282,21 +282,6 @@ bool GameManager::IsModuleLoaded(const std::string& moduleName) const {
 }
 
 int GameManager::GetLoadedCustomModules() const {
-	/*spdlog::critical("Finished waiting for injection");
-
-	int count = 0;
-
-	for (auto& file : std::filesystem::recursive_directory_iterator(Utils::GetCurrentModuleDir() + "mods")) {
-		if (file.is_regular_file() && file.path().extension() == ".dll") {
-			if (this->IsModuleLoaded(file.path().filename().string())) {
-				count++;
-			}
-		}
-	}
-
-	spdlog::critical("{} custom modules loaded", count);
-	return count;*/
-
 	while (!this->loadedCustomModules.has_value()) {
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}

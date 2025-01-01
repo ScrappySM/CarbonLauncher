@@ -31,7 +31,7 @@ namespace Carbon {
 		// Starts the game and waits for it to be running
 		// This function will block until the game is running
 		// This function spawns a new thread to actually start the game process
-		void StartGame();
+		void LaunchGame();
 
 		// Stops the game forcefully
 		void KillGame();

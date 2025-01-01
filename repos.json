@@ -42,12 +42,6 @@
             "ghRepo": "SM-DynamicSun"
         },
         {
-            "name": "No Auto Smart Physics",
-            "description": "Prevent Scrap Mechanic from automaticly changing your physics quality to Smart if too laggy.",
-            "authors": [
-                "VeraDev0"
-            ],
-
             "ghUser": "VeraDev0",
             "ghRepo": "SM-NoAutoSmartPhysics"
         },

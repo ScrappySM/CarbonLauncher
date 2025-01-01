@@ -29,6 +29,13 @@ namespace Carbon {
 
 		GLFWwindow* window;
 		std::function<void()> renderCallback;
+
+		enum class Tab {
+			MyMods,
+			Discover,
+			Console,
+			Settings,
+		} tab{ Tab::MyMods };
 	};
 }; // namespace Carbon
 

@@ -28,6 +28,9 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
+#include <font/IconsFontAwesome6.h>
+#include <font/IconsFontAwesome6.h_fa-solid-900.ttf.h>
+
 using namespace Carbon;
 
 GUIManager::GUIManager() : renderCallback(nullptr), window(nullptr) {
@@ -83,7 +86,8 @@ GUIManager::GUIManager() : renderCallback(nullptr), window(nullptr) {
 	style.ScrollbarSize = 10;
 	style.FrameRounding = 4.0f;
 	style.GrabRounding = 4.0f;
-	style.TabRounding = 6.0f;
+	style.TabRounding = 12.0f;
+	style.TabBarBorderSize = 0.0f;
 	style.ChildRounding = 6.0f;
 	style.PopupRounding = 4.0f;
 	style.ScrollbarRounding = 12.0f;
@@ -92,7 +96,21 @@ GUIManager::GUIManager() : renderCallback(nullptr), window(nullptr) {
 	style.PopupBorderSize = 0.0f;
 	style.TabBorderSize = 0.0f;
 
-	io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\seguisb.ttf", 18.0f);
+	constexpr float fontSize = 18.0f;
+	io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\seguisb.ttf", fontSize);
+	
+	constexpr float iconFontSize = fontSize * 2.0f / 3.0f;
+	void* data = (void*)s_fa_solid_900_ttf;
+	int size = sizeof(s_fa_solid_900_ttf);
+
+	static const ImWchar iconsRanges[] = { ICON_MIN_FA, ICON_MAX_16_FA, 0 };
+	ImFontConfig iconsConfig;
+	iconsConfig.MergeMode = true; 
+	iconsConfig.PixelSnapH = true; 
+	iconsConfig.GlyphMinAdvanceX = iconFontSize;
+	iconsConfig.FontDataOwnedByAtlas = false;
+	io.Fonts->AddFontFromMemoryTTF(data, size, iconFontSize, &iconsConfig, iconsRanges);
+	io.Fonts->Build();
 
 	// Go through every colour and get hsv values, if it's 151 then change it to 0 and then set the colour
 	for (int i = 0; i < ImGuiCol_COUNT; i++) {
@@ -157,6 +175,7 @@ void _GUI() {
 
 	C.discordManager.Update();
 
+	bool shouldOpenPopup = false;
 	// Begin main menu bar
 	if (ImGui::BeginMainMenuBar()) {
 		if (ImGui::BeginMenu("File")) {
@@ -165,7 +184,38 @@ void _GUI() {
 			}
 			ImGui::EndMenu();
 		}
+
+		if (ImGui::BeginMenu("Help")) {
+			if (ImGui::MenuItem("About")) {
+				//ImGui::OpenPopup("About Carbon Launcher");
+				shouldOpenPopup = true;
+			}
+
+			ImGui::EndMenu();
+		}
+
 		ImGui::EndMainMenuBar();
+	}
+
+	if (shouldOpenPopup) {
+		ImGui::OpenPopup("About Carbon Launcher");
+	}
+
+	if (ImGui::BeginPopupModal("About Carbon Launcher", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+		ImGui::Text("Carbon Launcher");
+		ImGui::Text("Version 1.0.0");
+		ImGui::Text("Developed by @BenMcAvoy");
+		if (ImGui::Button("View their GitHub")) {
+			ShellExecute(NULL, L"open", L"https://github.com/BenMcAvoy", NULL, NULL, SW_SHOWNORMAL);
+		}
+
+		ImGui::SameLine();
+
+		if (ImGui::Button("Close")) {
+			ImGui::CloseCurrentPopup();
+		}
+
+		ImGui::EndPopup();
 	}
 
 	int w, h;
@@ -175,175 +225,194 @@ void _GUI() {
 	ImGui::SetNextWindowSize(ImVec2((float)w, (float)h));
 	ImGui::Begin("Carbon Launcher", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_MenuBar);
 
-    // Begin tabs
-	if (ImGui::BeginTabBar("CarbonTabs", ImGuiTabBarFlags_None)) {
-		// Begin the first tab
-		if (ImGui::BeginTabItem("Home")) {
-			if (!C.repoManager.hasLoaded) {
-				ImGui::TextWrapped("Loading mods...");
-				ImGui::EndTabItem();
-				ImGui::EndTabBar();
-				ImGui::End();
-				return;
-			}
+	ImGui::BeginChild("Control", ImVec2(0, 64), true);
 
-			// Show each installed mod in a child window that spans the entire width of the window
-			for (auto& mod : C.repoManager.GetMods()) {
-				if (mod.installed) {
-					ImGui::BeginChild(mod.name.c_str(), ImVec2(0, 150), true);
-					ImGui::TextWrapped(mod.name.c_str());
-					ImGui::Separator();
-					ImGui::TextWrapped(mod.description.c_str());
-					ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 8);
-
-					std::string authText = mod.authors.size() > 1 ? "Authors: " : "Author: ";
-					ImGui::TextWrapped(authText.c_str());
-					ImGui::SameLine();
-					for (auto& author : mod.authors) {
-						std::string link = fmt::format("https://github.com/{}", author);
-						if (ImGui::Button(fmt::format("@{} ", author).c_str())) {
-							ShellExecute(NULL, L"open", std::wstring(link.begin(), link.end()).c_str(), NULL, NULL, SW_SHOWNORMAL);
-						}
-
-						if (author != mod.authors.back()) {
-							ImGui::SameLine();
-						}
-					}
-
-					// Go to bottom of child window
-					ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetContentRegionAvail().y - ImGui::GetTextLineHeightWithSpacing() - ImGui::GetStyle().ItemSpacing.y);
-
-					int frameWidth = (int)ImGui::GetContentRegionAvail().x;
-					if (ImGui::Button("Uninstall", ImVec2((float)frameWidth, 0))) {
-						if (C.gameManager.IsGameRunning()) {
-							spdlog::error("TODO: Unload the mod from the game (ctx: tried to uninstall mod while game was running)");
-							return;
-						}
-
-						mod.Uninstall();
-					}
-
-					ImGui::EndChild();
-				}
-			}
-
-			// If no mods are installed, show a message
-			if (std::none_of(C.repoManager.GetMods().begin(), C.repoManager.GetMods().end(), [](Mod& mod) { return mod.installed; })) {
-				ImGui::TextWrapped("No mods installed :(");
-				ImGui::TextWrapped("Check out the public mods tab to get started!");
-			}
-
-			ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 32);
-
-			// Big centered start/kill game button
-			int width = (int)(ImGui::GetWindowWidth() * 2 / 3); // 2/3 of the window width
-			ImGui::SetCursorPosX((ImGui::GetWindowWidth() - width) / 2);
-			if (ImGui::Button(C.gameManager.IsGameRunning() ? "Kill Game" : "Start Game", ImVec2((float)width, 40))) {
-				if (C.gameManager.IsGameRunning()) {
-					C.gameManager.KillGame();
-				}
-				else {
-					C.gameManager.StartGame();
-				}
-			}
-
-			ImGui::EndTabItem();
+	if (C.gameManager.IsGameRunning()) {
+		if (ImGui::Button(ICON_FA_STOP " Kill Game", ImVec2(128, 48))) {
+			C.gameManager.KillGame();
 		}
 
-		if (ImGui::BeginTabItem("Public mods")) {
-			ImGui::Columns(3, "modColumns", false);
-			for (auto& mod : C.repoManager.GetMods()) {
-				ImGui::ItemSize(ImVec2(0, 8), 0);
-				// Layout:
-				// | mod | mod | mod |
-				// | mod |
-
-				ImGui::BeginChild(mod.name.c_str(), ImVec2(0, 200), true);
-
-				ImGui::TextWrapped(mod.name.c_str());
-				ImGui::Separator();
-				ImGui::TextWrapped(mod.description.c_str());
-
-				ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 8);
-
-				if (mod.authors.size() > 1) {
-					ImGui::TextWrapped("Authors: ");
-					ImGui::SameLine();
-
-					for (auto& author : mod.authors) {
-						std::string link = "https://github.com/" + author;
-						std::string text = "@" + author + " ";
-
-						if (ImGui::Button(text.c_str())) {
-							ShellExecute(NULL, L"open", std::wstring(link.begin(), link.end()).c_str(), NULL, NULL, SW_SHOWNORMAL);
-						}
-
-						if (author != mod.authors.back()) {
-							ImGui::SameLine();
-						}
-					}
-				}
-				else {
-					ImGui::TextWrapped("Author: ");
-					ImGui::SameLine();
-
-					std::string link = "https://github.com/" + mod.authors[0];
-					std::string text = "@" + mod.authors[0] + " ";
-
-					if (ImGui::Button(text.c_str())) {
-						ShellExecute(NULL, L"open", std::wstring(link.begin(), link.end()).c_str(), NULL, NULL, SW_SHOWNORMAL);
-					}
-				}
-
-				ImGui::TextWrapped("Source: ");
-				ImGui::SameLine();
-				if (ImGui::Button("GitHub")) {
-					std::string link = fmt::format("https://github.com/{}/{}", mod.ghUser, mod.ghRepo);
-					ShellExecute(NULL, L"open", std::wstring(link.begin(), link.end()).c_str(), NULL, NULL, SW_SHOWNORMAL);
-				}
-
-				// Set ImGui cursor y pos to bottom of child window
-				ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetContentRegionAvail().y - ImGui::GetTextLineHeightWithSpacing() - ImGui::GetStyle().ItemSpacing.y);
-
-				if (ImGui::Button(mod.installed ? "Uninstall" : "Install")) {
-					if (mod.installed) {
-						mod.Uninstall();
-					}
-					else {
-						mod.Install();
-					}
-				}
-
-				ImGui::SameLine();
-				if (!mod.wantsUpdate) {
-					ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-					ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
-				}
-				if (ImGui::Button(mod.wantsUpdate ? "Update" : "Up to date")) {
-					mod.Update();
-				}
-				if (!mod.wantsUpdate) {
-					ImGui::PopItemFlag();
-					ImGui::PopStyleVar();
-				}
-
-				ImGui::EndChild();
-
-				ImGui::NextColumn();
-			}
-
-			ImGui::Columns(1);
-
-			ImGui::EndTabItem();
+		if (ImGui::IsItemHovered()) {
+			ImGui::BeginTooltip();
+			ImGui::Text("Kill the game and all its processes, should be used as a last resort!");
+			ImGui::EndTooltip();
 		}
-
-		// Begin the second tab
-		if (ImGui::BeginTabItem("Settings")) {
-			ImGui::EndTabItem();
-		}
-
-		ImGui::EndTabBar();
 	}
+	else {
+		if (ImGui::Button(ICON_FA_PLAY " Launch Game", ImVec2(128, 48))) {
+			C.gameManager.LaunchGame();
+		}
+	}
+
+	ImGui::EndChild();
+
+	ImGui::BeginChild("Tabs", ImVec2(64, 0), true);
+
+	auto highlight = [&](GUIManager::Tab tab) -> bool {
+		static ImVec4 colours[3] = {};
+		if (colours[0].x == 0) {
+			colours[0] = ImGui::GetStyleColorVec4(ImGuiCol_Button);
+			colours[1] = ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered);
+			colours[2] = ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive);
+
+			colours[0].w += 0.5f;
+			colours[1].w += 0.5f;
+			colours[2].w += 0.5f;
+		}
+		if (C.guiManager.tab == tab) {
+			ImGui::PushStyleColor(ImGuiCol_Button, colours[0]);
+			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, colours[1]);
+			ImGui::PushStyleColor(ImGuiCol_ButtonActive, colours[1]);
+		}
+
+		return C.guiManager.tab == tab;
+		};
+
+	auto renderTag = [&](GUIManager::Tab tag, const char* icon, const char* tooltip) -> void {
+		bool highlighted = highlight(tag);
+
+		if (ImGui::Button(icon, ImVec2(48, 48))) {
+			C.guiManager.tab = tag;
+		}
+
+		if (ImGui::IsItemHovered()) {
+			ImGui::BeginTooltip();
+			ImGui::Text(tooltip);
+			ImGui::EndTooltip();
+		}
+
+		if (highlighted)
+			ImGui::PopStyleColor(3);
+		};
+
+	renderTag(GUIManager::Tab::MyMods, ICON_FA_PUZZLE_PIECE, "My Mods, where you can manage the mods you have installed");
+	renderTag(GUIManager::Tab::Discover, ICON_FA_SHOP, "Discover, where you can discover new mods");
+	renderTag(GUIManager::Tab::Console, ICON_FA_TERMINAL, "Console, where you can see the output of the game");
+	renderTag(GUIManager::Tab::Settings, ICON_FA_GEAR, "Settings, where you can configure the launcher");
+
+	ImGui::EndChild();
+
+	ImGui::SameLine();
+
+	ImGui::BeginChild("Content", ImVec2(0, 0), true);
+
+	auto renderMod = [&](Mod& mod) -> void {
+		ImGui::BeginChild(mod.ghRepo.c_str(), ImVec2(0, 72), false);
+
+		// Begin children inside as well, we want 80% of the space for details, 20% for management
+		ImGui::BeginChild("Details", ImVec2(ImGui::GetContentRegionAvail().x - 128, 0), false);
+
+		ImGui::SetWindowFontScale(1.2f);
+		ImGui::TextWrapped(mod.name.c_str());
+		ImGui::SetWindowFontScale(1.0f);
+
+		ImGui::TextWrapped(mod.description.c_str());
+
+		ImGui::TextWrapped("Authors:");
+		ImGui::SameLine();
+		auto authBegin = mod.authors.begin();
+		auto authEnd = mod.authors.end();
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(2, 2));
+		for (auto it = authBegin; it != authEnd; it++) {
+			auto& author = *it;
+			if (it != authBegin) {
+				ImGui::SameLine();
+				ImGui::TextWrapped(", ");
+			}
+			ImGui::SameLine();
+			if (ImGui::SmallButton(author.c_str())) {
+				std::string url = fmt::format("https://github.com/{}", author);
+				ShellExecute(NULL, L"open", std::wstring(url.begin(), url.end()).c_str(), NULL, NULL, SW_SHOWNORMAL);
+			}
+		}
+		ImGui::PopStyleVar();
+
+		ImGui::EndChild();
+
+		ImGui::SameLine();
+
+		ImGui::BeginChild("Management", ImVec2(0, 0), false);
+
+		if (ImGui::Button(ICON_FA_GLOBE, ImVec2(48, 48))) {
+			std::string url = fmt::format("https://github.com/{}/{}", mod.ghUser, mod.ghRepo);
+			ShellExecute(NULL, L"open", std::wstring(url.begin(), url.end()).c_str(), NULL, NULL, SW_SHOWNORMAL);
+		}
+
+		if (ImGui::IsItemHovered()) {
+			ImGui::BeginTooltip();
+			ImGui::Text("Open the mods GitHub page");
+			ImGui::EndTooltip();
+		}
+
+		ImGui::SameLine();
+
+		if (mod.installed) {
+			if (ImGui::Button(ICON_FA_TRASH, ImVec2(48, 48))) {
+				mod.Uninstall();
+			}
+		}
+		else {
+			if (ImGui::Button(ICON_FA_DOWNLOAD, ImVec2(48, 48))) {
+				mod.Install();
+			}
+		}
+
+		if (ImGui::IsItemHovered()) {
+			ImGui::BeginTooltip();
+			ImGui::Text(mod.installed ? "Uninstall the mod" : "Install the mod");
+			ImGui::EndTooltip();
+		}
+
+		ImGui::EndChild();
+		ImGui::EndChild();
+		};
+
+	auto renderMods = [&](bool mustBeInstalled) -> void {
+		for (auto& mod : C.repoManager.GetMods()) {
+			if (mod.installed == mustBeInstalled) {
+				renderMod(mod);
+			}
+		}
+
+		if (std::all_of(C.repoManager.GetMods().begin(), C.repoManager.GetMods().end(), [&](Mod& mod) -> bool {
+			return mod.installed != mustBeInstalled;
+			})) {
+			if (mustBeInstalled) {
+				ImGui::TextWrapped("No mods installed! Get some from the discover tab " ICON_FA_FACE_SMILE);
+				if (ImGui::Button("Take me there!")) {
+					C.guiManager.tab = GUIManager::Tab::Discover;
+				}
+			}
+			else {
+				ImGui::TextWrapped("No more mods to discover! Check back later " ICON_FA_FACE_SMILE);
+			}
+		}
+		};
+
+	switch (C.guiManager.tab) {
+	case GUIManager::Tab::MyMods:
+		ImGui::SeparatorText("My Mods");
+		renderMods(true);
+		break;
+	case GUIManager::Tab::Discover:
+		ImGui::SeparatorText("Discover");
+		renderMods(false);
+		break;
+	case GUIManager::Tab::Console:
+		ImGui::SeparatorText("Console");
+		ImGui::TextWrapped("This is where the console will be");
+		break;
+	case GUIManager::Tab::Settings:
+		ImGui::SeparatorText("Settings");
+
+		if (ImGui::Button("Open Mods Directory")) {
+			std::string path = Utils::GetCurrentModuleDir() + "mods";
+			ShellExecute(NULL, L"open", std::wstring(path.begin(), path.end()).c_str(), NULL, NULL, SW_SHOWNORMAL);
+		}
+		break;
+	};
+
+	ImGui::EndChild();
 
 	ImGui::End();
 }
