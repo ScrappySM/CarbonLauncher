@@ -43,12 +43,18 @@ jobs:
         path: |
           x64\${{env.BUILD_CONFIGURATION}}\
 
+    - name: Create ZIP of Artifacts
+      run: |
+        $zipPath = "release\artifacts.zip"
+        $files = Get-ChildItem -Path "x64\${{env.BUILD_CONFIGURATION}}" -Filter *.dll -Recurse
+        $files += "x64\${{env.BUILD_CONFIGURATION}}\CarbonLauncher.exe"
+        if (!(Test-Path -Path "release")) { New-Item -ItemType Directory -Path "release" }
+        Compress-Archive -Path $files -DestinationPath $zipPath
+
     - name: Create Release
       uses: ncipollo/release-action@v1.14.0
       with:
-        artifacts: |
-          x64/${{env.BUILD_CONFIGURATION}}/CarbonLauncher.exe
-          x64/${{env.BUILD_CONFIGURATION}}/*.dll
+        artifacts: release\artifacts.zip
         draft: true
         makeLatest: true
         tag: dev
