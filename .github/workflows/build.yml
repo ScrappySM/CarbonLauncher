@@ -42,3 +42,12 @@ jobs:
         name: CarbonLauncher_${{env.BUILD_CONFIGURATION}}
         path: |
           x64\${{env.BUILD_CONFIGURATION}}\
+
+    - name: Create Release
+      uses: ncipollo/release-action@v1.14.0
+      with:
+        artifacts: |
+          x64/${{env.BUILD_CONFIGURATION}}/CarbonLauncher.exe
+          x64/${{env.BUILD_CONFIGURATION}}/*.dll
+        draft: true
+        makeLatest: true
