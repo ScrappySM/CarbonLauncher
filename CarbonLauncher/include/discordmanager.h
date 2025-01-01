@@ -1,7 +1,9 @@
 #pragma once
 
-#include <discord-game-sdk/discord_game_sdk.h>
-#include <discord-game-sdk/discord.h>
+/*#include <discord-game-sdk/discord_game_sdk.h>
+#include <discord-game-sdk/discord.h>*/
+
+#include <discord_rpc.h>
 
 #include <string>
 #include <memory>
@@ -22,19 +24,19 @@ namespace Carbon {
 		// @param details The new details
 		void UpdateDetails(const std::string& details);
 
-		// Updates the activity of the Discord RPC
-		void UpdateActivity() const;
-
 		// Gets the current activity
-		discord::Activity& GetActivity();
+		DiscordRichPresence& GetPresence();
 
 		// Updates the Discord RPC and listens for game state changes
 		void Update();
 
 	private:
-		discord::User currentUser = discord::User{};
+		DiscordEventHandlers discordHandlers = { 0 };
+		DiscordRichPresence discordPresence = { 0 };
+
+		/*discord::User currentUser = discord::User{};
 		discord::Activity currentActivity = discord::Activity{};
 
-		std::unique_ptr<discord::Core> core = nullptr;
+		std::unique_ptr<discord::Core> core = nullptr;*/
 	};
 }; // namespace Carbon

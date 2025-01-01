@@ -5,106 +5,71 @@
 #include <spdlog/spdlog.h>
 #include <fmt/format.h>
 
-constexpr auto discordClientId = 1315436867545595904;
+constexpr auto discordClientId = "1315436867545595904";
 
 using namespace Carbon;
 
 DiscordManager::DiscordManager() {
-    discord::Core* core{};
-	auto result = discord::Core::Create(discordClientId, DiscordCreateFlags_NoRequireDiscord, &core);
+	DiscordEventHandlers handlers;
+    memset(&handlers, 0, sizeof(handlers));
+	handlers.ready = [](const DiscordUser* connectedUser) {
+		spdlog::info("Discord connected to user {}", connectedUser->username);
+		};
+	handlers.disconnected = [](int errorCode, const char* message) {
+		spdlog::warn("Discord disconnected with error code {}: {}", errorCode, message);
+		};
+	handlers.errored = [](int errorCode, const char* message) {
+		spdlog::error("Discord error with code {}: {}", errorCode, message);
+		};
+	handlers.joinGame = [](const char* secret) {
+		spdlog::info("Joining game with secret {}", secret);
+		};
+	handlers.spectateGame = [](const char* secret) {
+		spdlog::info("Spectating game with secret {}", secret);
+		};
+	handlers.joinRequest = [](const DiscordUser* request) {
+		spdlog::info("Join request from {}#{}", request->username, request->discriminator);
+		};
+    Discord_Initialize(discordClientId, &handlers, 1, NULL);
+	this->discordHandlers = handlers;
 
-    this->core.reset(core);
+	spdlog::info("Initialized Discord instance");
 
-	if (!this->core) {
-		spdlog::warn("Failed to create Discord core");
-	}
+	this->discordPresence = DiscordRichPresence{
+		.details = "The most advanced mod loader for Scrap Mechanic",
+		.state = "In the main menu",
+		.largeImageKey = "icon",
+		.largeImageText = "Carbon Launcher",
+		.button1Label = "GitHub",
+		.button1Url = "https://github.com/ScrappySM/CarbonLauncher",
+		.button2Label = "Download",
+		.button2Url = "https://github.com/ScrappySM/CarbonLauncher/releases/latest",
+		.instance = 0,
+	};
 
-	else {
-		auto dCore = this->core.get();
+	Discord_UpdatePresence(&this->discordPresence);
 
-		dCore->SetLogHook(discord::LogLevel::Debug, [](discord::LogLevel level, const char* message) {
-			spdlog::debug("[Discord] {}", message);
-			});
+	spdlog::info("Updated Discord presence");
 
-		dCore->SetLogHook(discord::LogLevel::Info, [](discord::LogLevel level, const char* message) {
-			spdlog::info("[Discord] {}", message);
-			});
-
-		dCore->SetLogHook(discord::LogLevel::Warn, [](discord::LogLevel level, const char* message) {
-			spdlog::warn("[Discord] {}", message);
-			});
-
-		dCore->SetLogHook(discord::LogLevel::Error, [](discord::LogLevel level, const char* message) {
-			spdlog::error("[Discord] {}", message);
-			});
-
-		this->core->ActivityManager().RegisterCommand("carbonlauncher://run");
-
-		this->currentActivity = {};
-		auto& activity = this->GetActivity();
-
-		activity.SetDetails("https://github.com/ScrappySM/CarbonLauncher!");
-		activity.SetState("In the launcher!");
-
-		activity.GetAssets().SetLargeImage("icon");
-		activity.GetAssets().SetLargeText("Carbon Launcher");
-		/*activity.GetAssets().SetSmallImage("icon");
-		activity.GetAssets().SetSmallText("Carbon Launcher");*/
-
-		activity.SetType(discord::ActivityType::Playing);
-
-		this->core->ActivityManager().UpdateActivity(activity, [](discord::Result result) {
-			if (result != discord::Result::Ok) {
-				spdlog::error("Failed to update Discord RPC (error: {})", (int)result);
-			}
-			});
-
-		activity.GetAssets().SetLargeImage("icon");
-		activity.GetAssets().SetLargeText("Carbon Launcher");
-
-		this->UpdateActivity();
-	}
-
-
-	spdlog::info("Created Discord instance");
+	Discord_UpdateHandlers(&handlers);
 }
 
 void DiscordManager::UpdateState(const std::string& state) {
-	if (!this->core) {
-		return;
-	}
-
-	this->currentActivity.SetState(state.c_str());
-	this->UpdateActivity();
+	this->discordPresence.state = state.c_str();
+	Discord_UpdatePresence(&this->discordPresence);
 }
 
 void DiscordManager::UpdateDetails(const std::string& details) {
-	if (!this->core) {
-		return;
-	}
-
-	this->currentActivity.SetDetails(details.c_str());
-	this->UpdateActivity();
+	this->discordPresence.details = details.c_str();
+	Discord_UpdatePresence(&this->discordPresence);
 }
 
 DiscordManager::~DiscordManager() {
 	spdlog::info("Destroying Discord instance");
 }
 
-void DiscordManager::UpdateActivity() const {
-	if (!this->core) {
-		return;
-	}
-
-	this->core->ActivityManager().UpdateActivity(this->currentActivity, [](discord::Result result) {
-		if (result != discord::Result::Ok) {
-			spdlog::error("Failed to update activity");
-		}
-		});
-}
-
-discord::Activity& DiscordManager::GetActivity() {
-	return this->currentActivity;
+DiscordRichPresence& DiscordManager::GetPresence() {
+	return this->discordPresence;
 }
 
 void DiscordManager::Update() {
@@ -147,6 +112,6 @@ void DiscordManager::Update() {
 		statePackets.pop();
 	}
 
-	if (this->core)
-		this->core->RunCallbacks();
+	Discord_RunCallbacks();
+	Discord_UpdateHandlers(&this->discordHandlers);
 }

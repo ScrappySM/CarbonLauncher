@@ -44,6 +44,7 @@
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
+    <WholeProgramOptimization>false</WholeProgramOptimization>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -114,7 +115,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>include;.</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>include;vendor\include;.</AdditionalIncludeDirectories>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
@@ -131,7 +132,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>include;.</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>include;vendor\include;.</AdditionalIncludeDirectories>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
@@ -150,6 +151,12 @@
     <ClCompile Include="src\repomanager.cpp" />
     <ClCompile Include="src\state.cpp" />
     <ClCompile Include="src\utils.cpp" />
+    <ClCompile Include="vendor\src\connection_win.cpp" />
+    <ClCompile Include="vendor\src\discord_register_win.cpp" />
+    <ClCompile Include="vendor\src\discord_rpc.cpp" />
+    <ClCompile Include="vendor\src\dllmain.cpp" />
+    <ClCompile Include="vendor\src\rpc_connection.cpp" />
+    <ClCompile Include="vendor\src\serialization.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\font\IconsFontAwesome6.h" />
@@ -162,6 +169,13 @@
     <ClInclude Include="include\state.h" />
     <ClInclude Include="include\utils.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="vendor\include\discord_register.h" />
+    <ClInclude Include="vendor\include\discord_rpc.h" />
+    <ClInclude Include="vendor\src\backoff.h" />
+    <ClInclude Include="vendor\src\connection.h" />
+    <ClInclude Include="vendor\src\msg_queue.h" />
+    <ClInclude Include="vendor\src\rpc_connection.h" />
+    <ClInclude Include="vendor\src\serialization.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="CarbonLauncher.rc" />

@@ -15,7 +15,7 @@ namespace Carbon {
 	class CarbonState_t {
 	public:
 		CarbonState_t() {
-#ifndef NDEBUG
+//#ifndef NDEBUG
 			// Tell winapi to show a console window
 			AllocConsole();
 			FILE* file;
@@ -25,7 +25,7 @@ namespace Carbon {
 			spdlog::set_default_logger(console);                   // Set the default logger to the console logger
 			console->set_level(spdlog::level::trace);			   // Set the log level to info
 			spdlog::set_pattern("%^[ %H:%M:%S |  %-8l] %n: %v%$"); // Nice log format
-#endif
+//#endif
 		}
 
 		Carbon::GUIManager guiManager;
