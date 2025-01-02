@@ -6,7 +6,7 @@
 #include <string>
 #include <mutex>
 
-constexpr const char* REPOS_URL = "https://github.com/ScrappySM/CarbonLauncher/raw/refs/heads/main/repos.json";
+constexpr const char* REPOS_URL = "https://github.com/ScrappySM/CarbonRepo/raw/refs/heads/main/repos.json";
 
 namespace Carbon {
 	struct Mod {

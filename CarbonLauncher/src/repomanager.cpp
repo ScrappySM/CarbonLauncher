@@ -139,8 +139,6 @@ std::vector<Mod> RepoManager::URLToMods(const std::string& url) {
 }
 
 RepoManager::RepoManager() {
-	//this->repos = URLToRepos(REPOS_URL);S
-
 	std::thread([this]() {
 		// Allow some time for the console to initialize
 		std::this_thread::sleep_for(std::chrono::milliseconds(200));
