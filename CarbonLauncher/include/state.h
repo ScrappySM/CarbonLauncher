@@ -10,13 +10,18 @@
 #include "repomanager.h"
 
 namespace Carbon {
+	struct LogMessage {
+		std::string message;
+		std::string time;
+	};
+
 	// The main state of the Carbon Launcher
 	// Contains all the managers and the process target
 	class CarbonState_t {
 	public:
 		CarbonState_t() {
-//#ifndef NDEBUG
-			// Tell winapi to show a console window
+			//#ifndef NDEBUG
+						// Tell winapi to show a console window
 			AllocConsole();
 			FILE* file;
 			freopen_s(&file, "CONOUT$", "w", stdout);
@@ -25,7 +30,7 @@ namespace Carbon {
 			spdlog::set_default_logger(console);                   // Set the default logger to the console logger
 			console->set_level(spdlog::level::trace);			   // Set the log level to info
 			spdlog::set_pattern("%^[ %H:%M:%S |  %-8l] %n: %v%$"); // Nice log format
-//#endif
+			//#endif
 		}
 
 		Carbon::GUIManager guiManager;
@@ -33,6 +38,10 @@ namespace Carbon {
 		Carbon::GameManager gameManager;
 		Carbon::PipeManager pipeManager;
 		Carbon::RepoManager repoManager;
+
+		//std::vector<std::string> logMessages;
+
+		std::vector<LogMessage> logMessages;
 
 		// The target process to manage (e.g. ScrapMechanic.exe)
 		// This should never be a process that does not have a Contraption

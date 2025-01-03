@@ -3,6 +3,8 @@
 
 #include <spdlog/spdlog.h>
 
+#include <ctime>
+
 using namespace Carbon;
 
 PipeManager::PipeManager() {
@@ -13,8 +15,8 @@ PipeManager::PipeManager() {
 			PIPE_ACCESS_INBOUND,
 			PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
 			PIPE_UNLIMITED_INSTANCES,
-			1024,
-			1024,
+			1024 * 128,
+			1024 * 128,
 			0,
 			NULL
 		);
@@ -36,8 +38,15 @@ PipeManager::PipeManager() {
 		while (true) {
 			char buffer[1024]{};
 			DWORD bytesRead = 0;
-			if (!ReadFile(pipe, buffer, sizeof(buffer), &bytesRead, NULL)) {
-				spdlog::error("Failed to read from pipe");
+			auto res = ReadFile(pipe, buffer, sizeof(buffer), &bytesRead, NULL);
+			if (!res) {
+				//spdlog::error("Failed to read from pipe");
+				int code = GetLastError();
+				const char* error = nullptr;
+				FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+					nullptr, code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&error, 0, nullptr);
+				spdlog::error("Failed to read from pipe: {}", error);
+				LocalFree((HLOCAL)error);
 
 				C.discordManager.UpdateState("In the launcher!");
 
@@ -53,9 +62,9 @@ PipeManager::PipeManager() {
 					PIPE_ACCESS_INBOUND,
 					PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
 					PIPE_UNLIMITED_INSTANCES,
-					1024,
-					1024,
-					0,
+					1024 * 1024,
+					1024 * 1024,
+					PIPE_WAIT,
 					NULL
 				);
 
@@ -78,7 +87,7 @@ PipeManager::PipeManager() {
 			std::string packet(buffer, bytesRead);
 			auto delimiter = packet.find("-:-");
 			if (delimiter == std::string::npos) {
-				spdlog::error("Invalid packet received");
+				spdlog::error("Invalid packet received, data: `{}`", packet);
 				continue;
 			}
 			auto type = packet.substr(0, delimiter);
@@ -92,9 +101,35 @@ PipeManager::PipeManager() {
 			}
 			else if (type == "LOG") {
 				packetType = PacketType::LOG;
+
+				// just use libs to get timestamp, technically we could use the game's time
+				// but that would require the game to send the time and this doesn't feel important enough
+
+				// h, m, s
+				std::time_t currentTime = std::time(nullptr);
+				std::tm timeInfo;
+
+				localtime_s(&timeInfo, &currentTime);
+
+				std::string time = fmt::format("{:02}:{:02}:{:02}", timeInfo.tm_hour, timeInfo.tm_min, timeInfo.tm_sec);
+
+				LogMessage logMessage;
+				logMessage.message = data;
+				logMessage.time = time;
+				C.logMessages.emplace_back(logMessage);
+
+				// If we have more than 200 messages, remove the oldest one
+				if (C.logMessages.size() > 200) {
+					C.logMessages.erase(C.logMessages.begin());
+				}
+
+				spdlog::trace("G-L : `{}` @ {}", !data.empty() ? data : "null", type);
+				// Early return here, we don't want to add the log packet to the queue
+				continue;
 			}
 			else {
-				spdlog::error("Unknown packet type received");
+				spdlog::error("Unknown packet type received, data: `{}`", packet);
+				spdlog::trace("G-L : `{}` @ {}", !data.empty() ? data : "null", type);
 				continue;
 			}
 
@@ -116,7 +151,7 @@ PipeManager::PipeManager() {
 			// Allow the thread some breathing room
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		}
-	});
+		});
 	this->pipeReader.detach();
 }
 

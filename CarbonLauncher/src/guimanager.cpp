@@ -402,6 +402,25 @@ void _GUI() {
 		}
 		};
 
+	auto renderConsole = [&]() -> void {
+		ImGui::BeginChild("Console", ImVec2(0, 0), true);
+		auto begin = C.logMessages.begin();
+		auto end = C.logMessages.end();
+		for (auto it = begin; it != end; it++) {
+			auto& message = *it;
+			ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), message.time.c_str());
+			ImGui::SameLine();
+			ImGui::TextWrapped(message.message.c_str());
+		}
+
+		// If we were scrolled to the bottom, scroll down
+		if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY()) {
+			ImGui::SetScrollHereY(1.0f);
+		}
+
+		ImGui::EndChild();
+		};
+
 	switch (C.guiManager.tab) {
 	case GUIManager::Tab::MyMods:
 		ImGui::SeparatorText("My Mods");
@@ -413,7 +432,8 @@ void _GUI() {
 		break;
 	case GUIManager::Tab::Console:
 		ImGui::SeparatorText("Console");
-		ImGui::TextWrapped("This is where the console will be");
+		renderConsole();
+
 		break;
 	case GUIManager::Tab::Settings:
 		ImGui::SeparatorText("Settings");
