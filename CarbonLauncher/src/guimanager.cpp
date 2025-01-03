@@ -299,8 +299,7 @@ void _GUI() {
 	auto renderMod = [&](Mod& mod) -> void {
 		ImGui::BeginChild(mod.ghRepo.c_str(), ImVec2(0, 72), false);
 
-		// Begin children inside as well, we want 80% of the space for details, 20% for management
-		ImGui::BeginChild("Details", ImVec2(ImGui::GetContentRegionAvail().x - 128, 0), false);
+		ImGui::BeginChild("Details", ImVec2(ImGui::GetContentRegionAvail().x - (64 * 3), 0), false);
 
 		ImGui::SetWindowFontScale(1.2f);
 		ImGui::TextWrapped(mod.name.c_str());
@@ -332,6 +331,20 @@ void _GUI() {
 		ImGui::SameLine();
 
 		ImGui::BeginChild("Management", ImVec2(0, 0), false);
+
+		if (mod.wantsUpdate) {
+			if (ImGui::Button(ICON_FA_ARROWS_SPIN, ImVec2(48, 48))) {
+				mod.Update();
+			}
+
+			if (ImGui::IsItemHovered()) {
+				ImGui::BeginTooltip();
+				ImGui::Text("Update the mod");
+				ImGui::EndTooltip();
+			}
+		}
+
+		ImGui::SameLine();
 
 		if (ImGui::Button(ICON_FA_GLOBE, ImVec2(48, 48))) {
 			std::string url = fmt::format("https://github.com/{}/{}", mod.ghUser, mod.ghRepo);
@@ -409,6 +422,7 @@ void _GUI() {
 			std::string path = Utils::GetCurrentModuleDir() + "mods";
 			ShellExecute(NULL, L"open", std::wstring(path.begin(), path.end()).c_str(), NULL, NULL, SW_SHOWNORMAL);
 		}
+
 		break;
 	};
 

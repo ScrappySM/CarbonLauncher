@@ -72,7 +72,7 @@ std::optional<Mod> RepoManager::JSONToMod(const nlohmann::json& jMod) {
 		mod.installed = true;
 
 		// Check if the mod wants an update
-		std::string tagFile = Utils::GetCurrentModuleDir() + "/mods/" + mod.ghRepo + "/tag.txt";
+		std::string tagFile = Utils::GetCurrentModuleDir() + "/mods/" + mod.ghRepo + "/tag";
 		std::ifstream file(tagFile);
 		std::string tag;
 		file >> tag;
