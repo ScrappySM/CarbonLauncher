@@ -7,6 +7,8 @@
 
 using namespace Carbon;
 
+static constexpr int BUFFER_SIZE = 1024 * 10;
+
 PipeManager::PipeManager() {
 	this->pipeReader = std::thread([this]() {
 		// Create a pipe that *other* processes can connect to
@@ -15,8 +17,8 @@ PipeManager::PipeManager() {
 			PIPE_ACCESS_INBOUND,
 			PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
 			PIPE_UNLIMITED_INSTANCES,
-			1024 * 128,
-			1024 * 128,
+			BUFFER_SIZE,
+			BUFFER_SIZE,
 			0,
 			NULL
 		);
@@ -36,9 +38,9 @@ PipeManager::PipeManager() {
 
 		// Infinitely read and parse packets and add them to the queue
 		while (true) {
-			char buffer[1024]{};
+			static char* buffer = new char[BUFFER_SIZE];
 			DWORD bytesRead = 0;
-			auto res = ReadFile(pipe, buffer, sizeof(buffer), &bytesRead, NULL);
+			auto res = ReadFile(pipe, buffer, BUFFER_SIZE, &bytesRead, NULL);
 			if (!res) {
 				//spdlog::error("Failed to read from pipe");
 				int code = GetLastError();
@@ -62,8 +64,8 @@ PipeManager::PipeManager() {
 					PIPE_ACCESS_INBOUND,
 					PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
 					PIPE_UNLIMITED_INSTANCES,
-					1024 * 1024,
-					1024 * 1024,
+					1024 * 10,
+					1024 * 10,
 					PIPE_WAIT,
 					NULL
 				);
@@ -102,18 +104,21 @@ PipeManager::PipeManager() {
 			else if (type == "LOG") {
 				packetType = PacketType::LOG;
 
-				// just use libs to get timestamp, technically we could use the game's time
-				// but that would require the game to send the time and this doesn't feel important enough
-
-				// h, m, s
 				std::time_t currentTime = std::time(nullptr);
 				std::tm timeInfo;
 
 				localtime_s(&timeInfo, &currentTime);
 
+				// HH::MM::SS
 				std::string time = fmt::format("{:02}:{:02}:{:02}", timeInfo.tm_hour, timeInfo.tm_min, timeInfo.tm_sec);
 
+				// Split on -|- to get the log colour
+				auto colourDelimiter = data.find("-|-");
+				auto colour = data.substr(0, colourDelimiter);
+				data = data.substr(colourDelimiter + 3);
+
 				LogMessage logMessage;
+				logMessage.colour = std::stoi(colour);
 				logMessage.message = data;
 				logMessage.time = time;
 				C.logMessages.emplace_back(logMessage);
@@ -123,7 +128,6 @@ PipeManager::PipeManager() {
 					C.logMessages.erase(C.logMessages.begin());
 				}
 
-				spdlog::trace("G-L : `{}` @ {}", !data.empty() ? data : "null", type);
 				// Early return here, we don't want to add the log packet to the queue
 				continue;
 			}
@@ -155,7 +159,7 @@ PipeManager::PipeManager() {
 	this->pipeReader.detach();
 }
 
-PipeManager::~PipeManager() { }
+PipeManager::~PipeManager() {}
 
 std::queue<Packet> PipeManager::GetPacketsByType(PacketType packet) {
 	std::queue<Packet> filteredPackets;

@@ -147,12 +147,12 @@ GameManager::GameManager() {
 			}
 			std::this_thread::sleep_for(std::chrono::seconds(1));
 		}
-	});
+		});
 
 	this->moduleHandlerThread.detach();
 }
 
-GameManager::~GameManager() { }
+GameManager::~GameManager() {}
 
 bool GameManager::IsGameRunning() {
 	std::lock_guard<std::mutex> lock(this->gameStatusMutex);
@@ -191,7 +191,7 @@ void GameManager::InjectModule(const std::string& modulePath) {
 }
 
 void GameManager::LaunchGame() {
-	this->gameStartedTime = std::nullopt; 
+	this->gameStartedTime = std::nullopt;
 	this->gameRunning = false;
 	this->pid = 0;
 	this->modules.clear();
@@ -258,7 +258,7 @@ bool GameManager::IsModuleLoaded(const std::string& moduleName) const {
 	}
 
 	MODULEENTRY32 entry{ sizeof(entry) };
-	
+
 	if (!Module32First(hProcesses, &entry)) {
 		CloseHandle(hProcesses);
 		return false;

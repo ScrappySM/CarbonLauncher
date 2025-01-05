@@ -34,42 +34,42 @@
 using namespace Carbon;
 
 GUIManager::GUIManager() : renderCallback(nullptr), window(nullptr) {
-    // Initialize GLFW
-    if (!glfwInit()) {
-        MessageBox(NULL, L"GLFW Initialization Failed!", L"Error!", MB_ICONEXCLAMATION | MB_OK);
-        return;
-    }
+	// Initialize GLFW
+	if (!glfwInit()) {
+		MessageBox(NULL, L"GLFW Initialization Failed!", L"Error!", MB_ICONEXCLAMATION | MB_OK);
+		return;
+	}
 
-    glfwSetErrorCallback([](int error, const char* description) {
-        spdlog::error("GLFW Error {}: {}", error, description);
-    });
+	glfwSetErrorCallback([](int error, const char* description) {
+		spdlog::error("GLFW Error {}: {}", error, description);
+		});
 
-    // Create the OpenGL context
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	// Create the OpenGL context
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    // Create the GLFW window
-    this->window = glfwCreateWindow(1280, 720, "Carbon Launcher", NULL, NULL);
-    if (!this->window) {
-        spdlog::error("GLFW Window Creation Failed!");
-        glfwTerminate();
-        return;
-    }
+	// Create the GLFW window
+	this->window = glfwCreateWindow(1280, 720, "Carbon Launcher", NULL, NULL);
+	if (!this->window) {
+		spdlog::error("GLFW Window Creation Failed!");
+		glfwTerminate();
+		return;
+	}
 
-    glfwMakeContextCurrent(this->window);
+	glfwMakeContextCurrent(this->window);
 
-    // Initialize GLAD
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-        spdlog::error("GLAD Initialization Failed!");
-        glfwTerminate();
-        return;
-    }
+	// Initialize GLAD
+	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+		spdlog::error("GLAD Initialization Failed!");
+		glfwTerminate();
+		return;
+	}
 
-    // Enable dark mode (Windows only)
-    BOOL darkMode = TRUE;
-    HWND hWnd = glfwGetWin32Window(this->window);
-    DwmSetWindowAttribute(hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &darkMode, sizeof(darkMode));
+	// Enable dark mode (Windows only)
+	BOOL darkMode = TRUE;
+	HWND hWnd = glfwGetWin32Window(this->window);
+	DwmSetWindowAttribute(hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &darkMode, sizeof(darkMode));
 
 	// Initialize ImGui
 	IMGUI_CHECKVERSION();
@@ -98,15 +98,15 @@ GUIManager::GUIManager() : renderCallback(nullptr), window(nullptr) {
 
 	constexpr float fontSize = 18.0f;
 	io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\seguisb.ttf", fontSize);
-	
+
 	constexpr float iconFontSize = fontSize * 2.0f / 3.0f;
 	void* data = (void*)s_fa_solid_900_ttf;
 	int size = sizeof(s_fa_solid_900_ttf);
 
 	static const ImWchar iconsRanges[] = { ICON_MIN_FA, ICON_MAX_16_FA, 0 };
 	ImFontConfig iconsConfig;
-	iconsConfig.MergeMode = true; 
-	iconsConfig.PixelSnapH = true; 
+	iconsConfig.MergeMode = true;
+	iconsConfig.PixelSnapH = true;
 	iconsConfig.GlyphMinAdvanceX = iconFontSize;
 	iconsConfig.FontDataOwnedByAtlas = false;
 	io.Fonts->AddFontFromMemoryTTF(data, size, iconFontSize, &iconsConfig, iconsRanges);
@@ -144,11 +144,11 @@ GUIManager::~GUIManager() {
 }
 
 void GUIManager::Run() const {
-    while (!glfwWindowShouldClose(window)) {
-        glfwPollEvents();
+	while (!glfwWindowShouldClose(window)) {
+		glfwPollEvents();
 
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
 
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
@@ -161,13 +161,13 @@ void GUIManager::Run() const {
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-        glfwSwapBuffers(window);
+		glfwSwapBuffers(window);
 
 		// Slow us down if we're running too fast
 		if (ImGui::GetIO().DeltaTime < 1.0f / 60.0f) {
 			std::this_thread::sleep_for(std::chrono::milliseconds((int)((1.0f / 60.0f - ImGui::GetIO().DeltaTime) * 1000)));
 		}
-    }
+	}
 }
 
 void _GUI() {
@@ -299,7 +299,8 @@ void _GUI() {
 	auto renderMod = [&](Mod& mod) -> void {
 		ImGui::BeginChild(mod.ghRepo.c_str(), ImVec2(0, 72), false);
 
-		ImGui::BeginChild("Details", ImVec2(ImGui::GetContentRegionAvail().x - (64 * 3), 0), false);
+		float buttons = mod.wantsUpdate ? 2.75 : 2;
+		ImGui::BeginChild("Details", ImVec2(ImGui::GetContentRegionAvail().x - (64 * buttons), 0), false);
 
 		ImGui::SetWindowFontScale(1.2f);
 		ImGui::TextWrapped(mod.name.c_str());
@@ -410,7 +411,25 @@ void _GUI() {
 			auto& message = *it;
 			ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), message.time.c_str());
 			ImGui::SameLine();
+
+			static auto typeToColour = std::map<LogColour, ImVec4>{
+				{ LogColour::DARKGREEN, ImVec4(0.2f, 0.6f, 0.2f, 1.0f) },
+				{ LogColour::BLUE, ImVec4(0.2f, 0.2f, 0.6f, 1.0f) },
+				{ LogColour::PURPLE, ImVec4(0.5f, 0.2f, 0.5f, 1.0f) },
+				{ LogColour::GOLD, ImVec4(0.7f, 0.5f, 0.2f, 1.0f) },
+				{ LogColour::WHITE, ImVec4(0.8f, 0.8f, 0.8f, 1.0f) },
+				{ LogColour::DARKGRAY, ImVec4(0.3f, 0.3f, 0.3f, 1.0f) },
+				{ LogColour::DARKBLUE, ImVec4(0.1f, 0.1f, 0.4f, 1.0f) },
+				{ LogColour::GREEN, ImVec4(0.2f, 0.7f, 0.2f, 1.0f) },
+				{ LogColour::CYAN, ImVec4(0.2f, 0.7f, 0.7f, 1.0f) },
+				{ LogColour::RED, ImVec4(0.7f, 0.2f, 0.2f, 1.0f) },
+				{ LogColour::PINK, ImVec4(0.7f, 0.2f, 0.7f, 1.0f) },
+				{ LogColour::YELLOW, ImVec4(0.7f, 0.7f, 0.2f, 1.0f) },
+			};
+
+			ImGui::PushStyleColor(ImGuiCol_Text, typeToColour[static_cast<LogColour>(message.colour)]);
 			ImGui::TextWrapped(message.message.c_str());
+			ImGui::PopStyleColor();
 		}
 
 		// If we were scrolled to the bottom, scroll down

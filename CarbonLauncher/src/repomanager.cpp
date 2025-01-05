@@ -28,8 +28,8 @@ std::string getDefaultBranch(std::string ghUser, std::string ghRepo) {
 	auto response = cpr::Get(cpr::Url{ repoDataURL }, authHeader);
 
 	try {
-	auto json = nlohmann::json::parse(response.text);
-	return json["default_branch"];
+		auto json = nlohmann::json::parse(response.text);
+		return json["default_branch"];
 	}
 	catch (nlohmann::json::parse_error& e) {
 		spdlog::error("Failed to parse JSON: {}", e.what());
@@ -146,7 +146,7 @@ RepoManager::RepoManager() {
 		std::lock_guard<std::mutex> lock(this->repoMutex);
 		this->mods = URLToMods(REPOS_URL);
 		this->hasLoaded = true;
-	}).detach();
+		}).detach();
 }
 
 RepoManager::~RepoManager() {
@@ -265,7 +265,7 @@ void Mod::Update() {
 
 	// Find the latest tag
 	std::string tag = jLatest["tag_name"];
-	
+
 	std::unordered_map<std::string, std::string> downloadURLs;
 	for (const auto& asset : jLatest["assets"]) {
 		try {

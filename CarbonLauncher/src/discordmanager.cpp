@@ -11,7 +11,7 @@ using namespace Carbon;
 
 DiscordManager::DiscordManager() {
 	DiscordEventHandlers handlers;
-    memset(&handlers, 0, sizeof(handlers));
+	memset(&handlers, 0, sizeof(handlers));
 	handlers.ready = [](const DiscordUser* connectedUser) {
 		spdlog::info("Discord connected to user {}", connectedUser->username);
 		};
@@ -30,7 +30,7 @@ DiscordManager::DiscordManager() {
 	handlers.joinRequest = [](const DiscordUser* request) {
 		spdlog::info("Join request from {}#{}", request->username, request->discriminator);
 		};
-    Discord_Initialize(discordClientId, &handlers, 1, NULL);
+	Discord_Initialize(discordClientId, &handlers, 1, NULL);
 	this->discordHandlers = handlers;
 
 	spdlog::info("Initialized Discord instance");

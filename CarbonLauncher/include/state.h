@@ -11,6 +11,7 @@
 
 namespace Carbon {
 	struct LogMessage {
+		int colour;
 		std::string message;
 		std::string time;
 	};
