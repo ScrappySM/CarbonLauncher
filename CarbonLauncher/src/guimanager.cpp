@@ -248,11 +248,37 @@ void _GUI() {
 
 	// Display if the pipe is connected or not if the game is running
 	if (C.gameManager.IsGameRunning()) {
-		if (C.pipeManager.IsConnected()) {
-			ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FA_CHECK " Pipe Connected");
-		}
-		else {
-			ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), ICON_FA_CROSS " Pipe Disconnected");
+		if (!C.pipeManager.IsConnected()) {
+			static ImVec4 colours[3] = {};
+			if (colours[0].x == 0) {
+				colours[0] = ImGui::GetStyleColorVec4(ImGuiCol_Button);
+				colours[1] = ImGui::GetStyleColorVec4(ImGuiCol_Button);
+				colours[2] = ImGui::GetStyleColorVec4(ImGuiCol_Button);
+
+				for (int i = 0; i < 3; i++) {
+					colours[i].w += 0.5f;
+
+					float h, s, v;
+					ImGui::ColorConvertRGBtoHSV(colours[i].x, colours[i].y, colours[i].z, h, s, v);
+					h = 0.0f;
+					s = 0.9f;
+					ImGui::ColorConvertHSVtoRGB(h, s, v, colours[i].x, colours[i].y, colours[i].z);
+				}
+			}
+
+			ImGui::PushStyleColor(ImGuiCol_Button, colours[0]);
+			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, colours[1]);
+			ImGui::PushStyleColor(ImGuiCol_ButtonActive, colours[2]);
+
+			ImGui::Button(ICON_FA_X " Pipe Disconnected! " ICON_FA_FACE_SAD_TEAR, ImVec2(256, 48));
+
+			if (ImGui::IsItemHovered()) {
+				ImGui::BeginTooltip();
+				ImGui::Text("The pipe is disconnected, the game may not be running correctly and Carbon Launcher cannot communicate with it.");
+				ImGui::EndTooltip();
+			}
+
+			ImGui::PopStyleColor(3);
 		}
 	}
 
