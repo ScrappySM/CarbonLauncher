@@ -244,6 +244,18 @@ void _GUI() {
 		}
 	}
 
+	ImGui::SameLine();
+
+	// Display if the pipe is connected or not if the game is running
+	if (C.gameManager.IsGameRunning()) {
+		if (C.pipeManager.IsConnected()) {
+			ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FA_CHECK " Pipe Connected");
+		}
+		else {
+			ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), ICON_FA_CROSS " Pipe Disconnected");
+		}
+	}
+
 	ImGui::EndChild();
 
 	ImGui::BeginChild("Tabs", ImVec2(64, 0), true);
@@ -458,7 +470,7 @@ void _GUI() {
 		ImGui::SeparatorText("Settings");
 
 		if (ImGui::Button("Open Mods Directory")) {
-			std::string path = Utils::GetCurrentModuleDir() + "mods";
+			std::string path = Utils::GetDataDir() + "mods";
 			ShellExecute(NULL, L"open", std::wstring(path.begin(), path.end()).c_str(), NULL, NULL, SW_SHOWNORMAL);
 		}
 

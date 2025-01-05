@@ -35,6 +35,7 @@ PipeManager::PipeManager() {
 		}
 
 		spdlog::info("Connected to pipe");
+		SetConnected(true);
 
 		// Infinitely read and parse packets and add them to the queue
 		while (true) {
@@ -42,6 +43,8 @@ PipeManager::PipeManager() {
 			DWORD bytesRead = 0;
 			auto res = ReadFile(pipe, buffer, BUFFER_SIZE, &bytesRead, NULL);
 			if (!res) {
+				SetConnected(false);
+
 				//spdlog::error("Failed to read from pipe");
 				int code = GetLastError();
 				const char* error = nullptr;
@@ -72,16 +75,19 @@ PipeManager::PipeManager() {
 
 				if (pipe == INVALID_HANDLE_VALUE) {
 					spdlog::error("Failed to create pipe");
+					SetConnected(false);
 					return;
 				}
 
 				if (!ConnectNamedPipe(pipe, NULL)) {
 					spdlog::error("Failed to connect to pipe");
+					SetConnected(false);
 					CloseHandle(pipe);
 					return;
 				}
 
 				spdlog::info("Reconnected to pipe");
+				C.pipeManager.SetConnected(true);
 				continue;
 			}
 

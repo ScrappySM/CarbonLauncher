@@ -37,7 +37,7 @@ DiscordManager::DiscordManager() {
 
 	this->discordPresence = DiscordRichPresence{
 		.details = "The most advanced mod loader for Scrap Mechanic",
-		.state = "In the main menu",
+		.state = "In the launcher",
 		.largeImageKey = "icon",
 		.largeImageText = "Carbon Launcher",
 		.button1Label = "GitHub",

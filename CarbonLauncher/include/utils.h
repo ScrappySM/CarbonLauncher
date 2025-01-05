@@ -14,4 +14,8 @@ namespace Carbon::Utils {
 	// Get the current module directory
 	// @return The current module directory
 	std::string GetCurrentModuleDir();
+
+	// Get the data directory for Carbon Launcher
+	// @return The data directory for Carbon Launcher
+	std::string GetDataDir();
 }; // namespace Carbon::Utils

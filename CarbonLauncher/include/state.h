@@ -11,9 +11,14 @@
 
 namespace Carbon {
 	struct LogMessage {
-		int colour;
+		int colour = 0;
 		std::string message;
 		std::string time;
+	};
+
+	struct Settings {
+		//std::string dataDir = "C:\\Program Files\\CarbonLauncher"; // Needs admin permissions
+		std::string dataDir = "C:\\Users\\" + std::string(getenv("USERNAME")) + "\\AppData\\Local\\CarbonLauncher\\"; // Doesn't need admin permissions
 	};
 
 	// The main state of the Carbon Launcher
@@ -22,7 +27,6 @@ namespace Carbon {
 	public:
 		CarbonState_t() {
 			//#ifndef NDEBUG
-						// Tell winapi to show a console window
 			AllocConsole();
 			FILE* file;
 			freopen_s(&file, "CONOUT$", "w", stdout);
@@ -40,7 +44,8 @@ namespace Carbon {
 		Carbon::PipeManager pipeManager;
 		Carbon::RepoManager repoManager;
 
-		//std::vector<std::string> logMessages;
+		// The settings for the Carbon Launcher
+		Carbon::Settings settings;
 
 		std::vector<LogMessage> logMessages;
 
@@ -48,7 +53,6 @@ namespace Carbon {
 		// This should never be a process that does not have a Contraption
 		// located in the same place as ScrapMechanic.exe
 		const char* processTarget = "ScrapMechanic.exe";
-
 		// const char* processTarget = "DummyGame.exe";
 	};
 }; // namespace Carbon

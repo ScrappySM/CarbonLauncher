@@ -34,12 +34,6 @@ namespace Carbon {
 		PipeManager();
 		~PipeManager();
 
-		// Protects the packets vector
-		std::mutex pipeMutex;
-
-		// A vector of all the packets received from the game
-		std::vector<Packet> packets = {};
-
 		// Gets all the packets received from the game
 		// @return A vector of all the packets received from the game
 		// @note This function is thread-safe
@@ -47,6 +41,9 @@ namespace Carbon {
 			std::lock_guard<std::mutex> lock(this->pipeMutex);
 			return this->packets;
 		}
+
+		bool IsConnected() const { return this->connected; }
+		void SetConnected(bool connected) { this->connected = connected; }
 		
 		// Gets all the packets of a specific type, removing them from the vector
 		// @param packet The type of packet to get
@@ -54,6 +51,11 @@ namespace Carbon {
 		std::queue<Packet> GetPacketsByType(PacketType packet);
 
 	private:
+		// Used to read packets from the pipe
+		std::mutex pipeMutex;
 		std::thread pipeReader;
+		std::vector<Packet> packets = {};
+
+		bool connected = false;
 	};
 }; // namespace Carbon

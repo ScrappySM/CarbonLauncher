@@ -117,7 +117,7 @@ GameManager::GameManager() {
 
 					spdlog::info("Game loaded, injecting modules");
 
-					std::string modulesDir = Utils::GetCurrentModuleDir() + "mods";
+					std::string modulesDir = Utils::GetDataDir() + "mods";
 					std::filesystem::create_directory(modulesDir);
 
 					int loadedCustomModules = 0;
@@ -202,7 +202,7 @@ void GameManager::LaunchGame() {
 			spdlog::info("Launching Scrap Mechanic via Steam");
 		}
 		else {
-			std::string exePath = Utils::GetCurrentModuleDir() + C.processTarget;
+			std::string exePath = Utils::GetDataDir() + C.processTarget;
 			ShellExecute(NULL, L"open", std::wstring(exePath.begin(), exePath.end()).c_str(), NULL, NULL, SW_SHOWNORMAL);
 			spdlog::info("Launching game via ShellExecute");
 		}
@@ -211,12 +211,9 @@ void GameManager::LaunchGame() {
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		}
 
-		spdlog::info("Game detected as running");
-
 		this->gameStartedTime = std::chrono::system_clock::now();
 		std::this_thread::sleep_for(std::chrono::seconds(1));
 		this->InjectModule(Utils::GetCurrentModuleDir() + "CarbonSupervisor.dll");
-		spdlog::info("Injected CarbonSupervisor.dll");
 		}).detach();
 
 	spdlog::info("Started game in detached thread");
@@ -272,7 +269,10 @@ bool GameManager::IsModuleLoaded(const std::string& moduleName) const {
 
 	for (auto& module : modules) {
 		std::wstring moduleNameW(module.szModule);
-		std::string moduleNameA(moduleNameW.begin(), moduleNameW.end());
+		int bufferSize = WideCharToMultiByte(CP_UTF8, 0, moduleNameW.c_str(), -1, NULL, 0, NULL, NULL);
+		std::string moduleNameA(bufferSize, 0);
+		WideCharToMultiByte(CP_UTF8, 0, moduleNameW.c_str(), -1, moduleNameA.data(), bufferSize, NULL, NULL);
+
 		if (moduleNameA == moduleName) {
 			return true;
 		}

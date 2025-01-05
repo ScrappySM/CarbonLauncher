@@ -68,11 +68,11 @@ std::optional<Mod> RepoManager::JSONToMod(const nlohmann::json& jMod) {
 	}
 
 	// Check if the mod is installed
-	if (std::filesystem::exists(Utils::GetCurrentModuleDir() + "/mods/" + mod.ghRepo)) {
+	if (std::filesystem::exists(Utils::GetDataDir() + "/mods/" + mod.ghRepo)) {
 		mod.installed = true;
 
 		// Check if the mod wants an update
-		std::string tagFile = Utils::GetCurrentModuleDir() + "/mods/" + mod.ghRepo + "/tag";
+		std::string tagFile = Utils::GetDataDir() + "/mods/" + mod.ghRepo + "/tag";
 		std::ifstream file(tagFile);
 		std::string tag;
 		file >> tag;
@@ -204,7 +204,7 @@ void Mod::Install() {
 			}
 
 			// mod dir
-			std::string modDir = Utils::GetCurrentModuleDir() + "/mods/" + this->ghRepo + "/";
+			std::string modDir = Utils::GetDataDir() + "/mods/" + this->ghRepo + "/";
 			std::filesystem::create_directories(modDir);
 
 			// mod file
@@ -217,7 +217,7 @@ void Mod::Install() {
 		}
 
 		// Save `tag` file with the tag name
-		std::string tagFile = Utils::GetCurrentModuleDir() + "/mods/" + this->ghRepo + "/tag";
+		std::string tagFile = Utils::GetDataDir() + "/mods/" + this->ghRepo + "/tag";
 		std::ofstream file(tagFile);
 		file << tag;
 		file.close();
@@ -234,7 +234,7 @@ void Mod::Uninstall() {
 		return;
 	}
 
-	std::string modDir = Utils::GetCurrentModuleDir() + "/mods/" + this->ghRepo + "/";
+	std::string modDir = Utils::GetDataDir() + "/mods/" + this->ghRepo + "/";
 	std::filesystem::remove_all(modDir);
 	this->installed = false;
 	spdlog::info("Uninstalled: {}", this->name);
@@ -283,7 +283,7 @@ void Mod::Update() {
 	for (const auto& [name, url] : downloadURLs) {
 		auto download = cpr::Get(cpr::Url{ url }, authHeader);
 		// mod dir
-		std::string modDir = Utils::GetCurrentModuleDir() + "/mods/" + this->ghRepo + "/";
+		std::string modDir = Utils::GetDataDir() + "/mods/" + this->ghRepo + "/";
 		std::filesystem::create_directories(modDir);
 		// mod file
 		std::string modFile = modDir + name;
@@ -294,7 +294,7 @@ void Mod::Update() {
 	}
 
 	// Save `tag` file with the tag name
-	std::string tagFile = Utils::GetCurrentModuleDir() + "/mods/" + this->ghRepo + "/tag";
+	std::string tagFile = Utils::GetDataDir() + "/mods/" + this->ghRepo + "/tag";
 	std::ofstream file(tagFile);
 	file << tag;
 	file.close();
