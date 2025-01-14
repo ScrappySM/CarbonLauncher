@@ -101,11 +101,11 @@ void DiscordManager::Update() {
 		case 2:
 			spdlog::trace("In a game!");
 
-			this->UpdateState(fmt::format("In a game! ({} mods loaded)", C.gameManager.GetLoadedCustomModules()));
+			this->UpdateState(fmt::format("In a game! ({} mods loaded)", C.processManager.GetLoadedCustomModules()));
 			break;
 		case 3:
 			spdlog::trace("In the main menu");
-			this->UpdateState(fmt::format("In the main menu with {} mods loaded", C.gameManager.GetLoadedCustomModules()));
+			this->UpdateState(fmt::format("In the main menu with {} mods loaded", C.processManager.GetLoadedCustomModules()));
 			break;
 		};
 

@@ -227,9 +227,9 @@ void _GUI() {
 
 	ImGui::BeginChild("Control", ImVec2(0, 64), true);
 
-	if (C.gameManager.IsGameRunning()) {
+	if (C.processManager.IsGameRunning()) {
 		if (ImGui::Button(ICON_FA_STOP " Kill Game", ImVec2(128, 48))) {
-			C.gameManager.KillGame();
+			C.processManager.KillGame();
 		}
 
 		if (ImGui::IsItemHovered()) {
@@ -240,14 +240,25 @@ void _GUI() {
 	}
 	else {
 		if (ImGui::Button(ICON_FA_PLAY " Launch Game", ImVec2(128, 48))) {
-			C.gameManager.LaunchGame();
+			C.processManager.LaunchProcess(C.guiManager.target == ModTarget::Game ? "ScrapMechanic.exe" : "ModTool.exe");
 		}
 	}
 
 	ImGui::SameLine();
 
+	// Combo box for selecting the mod target
+	static const char* items[] = { "Game", "Mod Tool" };
+	static int item_current = 0;
+	ImGui::SetNextItemWidth(128);
+	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 12);
+	if (ImGui::Combo("Target", &item_current, items, IM_ARRAYSIZE(items))) {
+		C.guiManager.target = item_current == 0 ? ModTarget::Game : ModTarget::ModTool;
+	}
+
+	ImGui::SameLine();
+
 	// Display if the pipe is connected or not if the game is running
-	if (C.gameManager.IsGameRunning()) {
+	if (C.processManager.IsGameRunning()) {
 		if (!C.pipeManager.IsConnected()) {
 			static ImVec4 colours[3] = {};
 			if (colours[0].x == 0) {
@@ -274,7 +285,7 @@ void _GUI() {
 
 			if (ImGui::IsItemHovered()) {
 				ImGui::BeginTooltip();
-				ImGui::Text("The pipe is disconnected, the game may not be running correctly and Carbon Launcher cannot communicate with it.");
+				ImGui::Text("The pipe is disconnected, the game may not be running correctly and Carbon Launcher cannot communicate with it, did you launch the game from the launcher?");
 				ImGui::EndTooltip();
 			}
 
@@ -337,7 +348,7 @@ void _GUI() {
 	auto renderMod = [&](Mod& mod) -> void {
 		ImGui::BeginChild(mod.ghRepo.c_str(), ImVec2(0, 72), false);
 
-		float buttons = mod.wantsUpdate ? 2.75 : 2;
+		float buttons = mod.wantsUpdate ? 2.75f : 2.0f;
 		ImGui::BeginChild("Details", ImVec2(ImGui::GetContentRegionAvail().x - (64 * buttons), 0), false);
 
 		ImGui::SetWindowFontScale(1.2f);
@@ -420,13 +431,13 @@ void _GUI() {
 		};
 
 	auto renderMods = [&](bool mustBeInstalled) -> void {
-		for (auto& mod : C.repoManager.GetMods()) {
+		for (auto& mod : C.modManager.GetMods(C.guiManager.target)) {
 			if (mod.installed == mustBeInstalled) {
 				renderMod(mod);
 			}
 		}
 
-		if (std::all_of(C.repoManager.GetMods().begin(), C.repoManager.GetMods().end(), [&](Mod& mod) -> bool {
+		if (std::all_of(C.modManager.GetMods(C.guiManager.target).begin(), C.modManager.GetMods(C.guiManager.target).end(), [&](Mod& mod) -> bool {
 			return mod.installed != mustBeInstalled;
 			})) {
 			if (mustBeInstalled) {

@@ -13,12 +13,12 @@
 namespace Carbon {
 	// Manages the game process including starting and stopping it
 	// along with monitoring the game's executable and loaded modules
-	class GameManager {
+	class ProcessManager {
 	public:
 		// Initializes the game manager and starts a thread
 		// listening for the game process
-		GameManager();
-		~GameManager();
+		ProcessManager();
+		~ProcessManager();
 
 		// Checks if the game is running
 		// @return True if the game is running, false otherwise
@@ -31,7 +31,7 @@ namespace Carbon {
 		// Starts the game and waits for it to be running
 		// This function will block until the game is running
 		// This function spawns a new thread to actually start the game process
-		void LaunchGame();
+		void LaunchProcess(const std::string& name);
 
 		// Stops the game forcefully
 		void KillGame();

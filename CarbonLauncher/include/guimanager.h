@@ -9,6 +9,8 @@
 
 #include <GLFW/glfw3.h>
 
+#include "modmanager.h"
+
 namespace Carbon {
 	enum LogColour : WORD {
 		DARKGREEN = 2,
@@ -31,9 +33,6 @@ namespace Carbon {
 		GUIManager();
 		~GUIManager();
 
-		// Sets the render callback (called every frame on the main thread)
-		// @param callback The callback to call
-		// @note This is where you should put your ImGui code
 		void RenderCallback(std::function<void()> callback) {
 			this->renderCallback = callback;
 		}
@@ -44,6 +43,8 @@ namespace Carbon {
 
 		GLFWwindow* window;
 		std::function<void()> renderCallback;
+
+		ModTarget target = ModTarget::Game;
 
 		enum class Tab {
 			MyMods,

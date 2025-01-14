@@ -5,9 +5,9 @@
 
 #include "guimanager.h"
 #include "discordmanager.h"
-#include "gamemanager.h"
+#include "processmanager.h"
 #include "pipemanager.h"
-#include "repomanager.h"
+#include "modmanager.h"
 
 namespace Carbon {
 	struct LogMessage {
@@ -40,9 +40,9 @@ namespace Carbon {
 
 		Carbon::GUIManager guiManager;
 		Carbon::DiscordManager discordManager;
-		Carbon::GameManager gameManager;
+		Carbon::ProcessManager processManager;
 		Carbon::PipeManager pipeManager;
-		Carbon::RepoManager repoManager;
+		Carbon::ModManager modManager;
 
 		// The settings for the Carbon Launcher
 		Carbon::Settings settings;
@@ -52,7 +52,7 @@ namespace Carbon {
 		// The target process to manage (e.g. ScrapMechanic.exe)
 		// This should never be a process that does not have a Contraption
 		// located in the same place as ScrapMechanic.exe
-		const char* processTarget = "ScrapMechanic.exe";
+		// const char* processTarget = "ScrapMechanic.exe";
 		// const char* processTarget = "DummyGame.exe";
 	};
 }; // namespace Carbon

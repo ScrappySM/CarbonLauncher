@@ -1,4 +1,4 @@
-#include "repomanager.h"
+#include "modmanager.h"
 #include "state.h"
 #include "utils.h"
 
@@ -37,20 +37,50 @@ std::string getDefaultBranch(std::string ghUser, std::string ghRepo) {
 	}
 }
 
-std::optional<Mod> RepoManager::JSONToMod(const nlohmann::json& jMod) {
-	std::string branch = getDefaultBranch(jMod["ghUser"].get<std::string>(), jMod["ghRepo"].get<std::string>());
-	std::string manifestURL = fmt::format("https://raw.githubusercontent.com/{}/{}/{}/manifest.json", jMod["ghUser"].get<std::string>(), jMod["ghRepo"].get<std::string>(), branch);
+std::optional<Mod> ModManager::JSONToMod(const nlohmann::json& jMod) {
+	std::string branch = "";
+
+	std::string user = "";
+	std::string repo = "";
+
+	if (jMod.is_string()) {
+		std::string modRepo = jMod.get<std::string>();
+		user = modRepo.substr(0, modRepo.find('/'));
+		repo = modRepo.substr(modRepo.find('/') + 1);
+	}
+	else {
+		user = jMod["ghUser"];
+		repo = jMod["ghRepo"];
+	}
+
+	branch = getDefaultBranch(user, repo);
+
+	std::string manifestURL = fmt::format("https://raw.githubusercontent.com/{}/{}/{}/manifest.json", user, repo, branch);
 	cpr::Response manifest = cpr::Get(cpr::Url{ manifestURL });
 
 	bool hasManifest = manifest.status_code == 200;
 
 	Mod mod;
-	mod.ghUser = jMod["ghUser"];
-	mod.ghRepo = jMod["ghRepo"];
+
+	std::string ghUser = "";
+	std::string ghRepo = "";
+	if (jMod.is_string()) {
+		std::string modRepo = jMod.get<std::string>();
+		ghUser = modRepo.substr(0, modRepo.find('/'));
+		ghRepo = modRepo.substr(modRepo.find('/') + 1);
+
+		mod.ghUser = ghUser;
+		mod.ghRepo = ghRepo;
+	}
+	else {
+		mod.ghUser = jMod["ghUser"];
+		mod.ghRepo = jMod["ghRepo"];
+		ghUser = jMod["ghUser"];
+		ghRepo = jMod["ghRepo"];
+	}
 
 	if (hasManifest) {
-		std::string modRepo = jMod["ghRepo"].get<std::string>();
-		spdlog::trace("Mod {} has a manifest.json!", modRepo);
+		spdlog::trace("Mod {} has a manifest.json!", ghUser + "/" + ghRepo);
 		auto jManifest = nlohmann::json::parse(manifest.text);
 
 		mod.name = jManifest["name"];
@@ -68,11 +98,16 @@ std::optional<Mod> RepoManager::JSONToMod(const nlohmann::json& jMod) {
 	}
 
 	// Check if the mod is installed
-	if (std::filesystem::exists(Utils::GetDataDir() + "/mods/" + mod.ghRepo)) {
+	if (std::filesystem::exists(fmt::format("{}/mods/game/{}", Utils::GetDataDir(), mod.ghRepo)) || std::filesystem::exists(fmt::format("{}/mods/modtool/{}", Utils::GetDataDir(), mod.ghRepo))) {
 		mod.installed = true;
 
 		// Check if the mod wants an update
-		std::string tagFile = Utils::GetDataDir() + "/mods/" + mod.ghRepo + "/tag";
+		//std::string tagFile = Utils::GetDataDir() + "/mods/" + (mod.ghRepo == "CarbonLauncher" ? "modtool" : "game") + "/" + mod.ghRepo + ".tag";
+		std::string tagFile = fmt::format("{}mods/game/{}/tag", Utils::GetDataDir(), mod.ghRepo);
+		if (!std::filesystem::exists(tagFile)) {
+			tagFile = fmt::format("{}mods/modtool/{}/tag", Utils::GetDataDir(), mod.ghRepo);
+		}
+		spdlog::info("Checking tag file: {}", tagFile);
 		std::ifstream file(tagFile);
 		std::string tag;
 		file >> tag;
@@ -104,7 +139,7 @@ std::optional<Mod> RepoManager::JSONToMod(const nlohmann::json& jMod) {
 	return mod;
 }
 
-std::vector<Mod> RepoManager::URLToMods(const std::string& url) {
+std::pair<std::vector<Mod>, std::vector<Mod>> ModManager::URLToMods(const std::string& url) {
 	std::chrono::time_point<std::chrono::system_clock> start = std::chrono::system_clock::now();
 	cpr::Response response = cpr::Get(cpr::Url{ url });
 
@@ -117,13 +152,26 @@ std::vector<Mod> RepoManager::URLToMods(const std::string& url) {
 		return {};
 	}
 
-	std::vector<Mod> mods;
 	std::vector<std::thread> threads;
-	for (auto& jMod : json["mods"]) {
-		threads.push_back(std::thread([this, &mods, jMod]() {
+	std::mutex mtx;
+
+	std::vector<Mod> gameMods;
+	for (auto& jMod : json["mods"]["game"]) {
+		threads.push_back(std::thread([&]() {
 			auto mod = this->JSONToMod(jMod);
 			if (mod.has_value())
-				mods.push_back(mod.value());
+				std::lock_guard<std::mutex> lock(mtx);
+				gameMods.push_back(mod.value());
+			}));
+	}
+
+	std::vector<Mod> modToolMods;
+	for (auto& jMod : json["mods"]["modtool"]) {
+		threads.push_back(std::thread([&, this]() {
+			auto mod = this->JSONToMod(jMod);
+			if (mod.has_value())
+				std::lock_guard<std::mutex> lock(mtx);
+				modToolMods.push_back(mod.value());
 			}));
 	}
 
@@ -133,24 +181,28 @@ std::vector<Mod> RepoManager::URLToMods(const std::string& url) {
 
 	std::chrono::time_point<std::chrono::system_clock> end = std::chrono::system_clock::now();
 	std::chrono::duration<double> elapsed_seconds = end - start;
-	spdlog::info("Loaded {} mods in {} seconds", mods.size(), elapsed_seconds.count());
+	spdlog::info("Loaded {} mods in {} seconds", gameMods.size() + modToolMods.size(), elapsed_seconds.count());
 
-	return mods;
+	return { gameMods, modToolMods };
 }
 
-RepoManager::RepoManager() {
+ModManager::ModManager() {
 	std::thread([this]() {
 		// Allow some time for the console to initialize
 		std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
 		std::lock_guard<std::mutex> lock(this->repoMutex);
-		this->mods = URLToMods(REPOS_URL);
+		//this->mods = URLToMods(REPOS_URL);
+		auto mods = URLToMods(REPOS_URL);
+		this->gameMods = mods.first;
+		this->modToolMods = mods.second;
 		this->hasLoaded = true;
 		}).detach();
 }
 
-RepoManager::~RepoManager() {
-	this->mods.clear();
+ModManager::~ModManager() {
+	this->gameMods.clear();
+	this->modToolMods.clear();
 }
 
 void Mod::Install() {
@@ -204,11 +256,14 @@ void Mod::Install() {
 			}
 
 			// mod dir
-			std::string modDir = Utils::GetDataDir() + "/mods/" + this->ghRepo + "/";
+			//std::string modDir = Utils::GetDataDir() + "/mods/" + this->ghRepo + "/";
+			//std::string modDir = Utils::GetDataDir() + "/mods/" + C.guiManager.target == ModTarget::Game ? "game" : "modtool" + "/" + this->ghRepo + "/";
+			std::string modDir = fmt::format("{}mods/{}/{}", Utils::GetDataDir(), C.guiManager.target == ModTarget::Game ? "game" : "modtool", this->ghRepo);
+			spdlog::info("modDir: {}", modDir);
 			std::filesystem::create_directories(modDir);
 
 			// mod file
-			std::string modFile = modDir + name;
+			std::string modFile = modDir + "\\" + name;
 			std::ofstream file(modFile, std::ios::binary);
 			file << download.text;
 			file.close();
@@ -217,7 +272,7 @@ void Mod::Install() {
 		}
 
 		// Save `tag` file with the tag name
-		std::string tagFile = Utils::GetDataDir() + "/mods/" + this->ghRepo + "/tag";
+		std::string tagFile = fmt::format("{}mods/{}/{}", Utils::GetDataDir(), C.guiManager.target == ModTarget::Game ? "game" : "modtool", this->ghRepo) + "/tag";
 		std::ofstream file(tagFile);
 		file << tag;
 		file.close();
@@ -229,19 +284,20 @@ void Mod::Install() {
 }
 
 void Mod::Uninstall() {
-	if (C.gameManager.IsGameRunning()) {
+	if (C.processManager.IsGameRunning()) {
 		spdlog::error("Game is running, cannot uninstall mod");
 		return;
 	}
 
-	std::string modDir = Utils::GetDataDir() + "/mods/" + this->ghRepo + "/";
+	//std::string modDir = Utils::GetDataDir() + "/mods/" + this->ghRepo + "/";
+	std::string modDir = fmt::format("{}mods/{}/{}", Utils::GetDataDir(), C.guiManager.target == ModTarget::Game ? "game" : "modtool", this->ghRepo);
 	std::filesystem::remove_all(modDir);
 	this->installed = false;
 	spdlog::info("Uninstalled: {}", this->name);
 }
 
 void Mod::Update() {
-	if (C.gameManager.IsGameRunning()) {
+	if (C.processManager.IsGameRunning()) {
 		spdlog::error("Game is running, cannot update mod");
 		return;
 	}
@@ -283,7 +339,7 @@ void Mod::Update() {
 	for (const auto& [name, url] : downloadURLs) {
 		auto download = cpr::Get(cpr::Url{ url }, authHeader);
 		// mod dir
-		std::string modDir = Utils::GetDataDir() + "/mods/" + this->ghRepo + "/";
+		std::string modDir = fmt::format("{}mods/{}/{}", Utils::GetDataDir(), C.guiManager.target == ModTarget::Game ? "game" : "modtool", this->ghRepo);
 		std::filesystem::create_directories(modDir);
 		// mod file
 		std::string modFile = modDir + name;
@@ -294,7 +350,7 @@ void Mod::Update() {
 	}
 
 	// Save `tag` file with the tag name
-	std::string tagFile = Utils::GetDataDir() + "/mods/" + this->ghRepo + "/tag";
+	std::string tagFile = fmt::format("{}mods/{}/{}", Utils::GetDataDir(), C.guiManager.target == ModTarget::Game ? "game" : "modtool", this->ghRepo) + "/tag";
 	std::ofstream file(tagFile);
 	file << tag;
 	file.close();

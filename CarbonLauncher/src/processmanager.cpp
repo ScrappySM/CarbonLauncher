@@ -1,4 +1,4 @@
-#include "gamemanager.h"
+#include "processmanager.h"
 #include "state.h"
 #include "utils.h"
 
@@ -14,7 +14,7 @@
 
 using namespace Carbon;
 
-GameManager::GameManager() {
+ProcessManager::ProcessManager() {
 	this->gameStatusThread = std::thread([this]() {
 		std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
@@ -36,7 +36,7 @@ GameManager::GameManager() {
 
 			bool found = false;
 			do {
-				std::string target(C.processTarget);
+				std::string target(C.guiManager.target == ModTarget::Game ? "ScrapMechanic.exe" : "ModTool.exe");
 				if (std::wstring(entry.szExeFile) == std::wstring(target.begin(), target.end())) {
 					found = true;
 					break;
@@ -152,14 +152,14 @@ GameManager::GameManager() {
 	this->moduleHandlerThread.detach();
 }
 
-GameManager::~GameManager() {}
+ProcessManager::~ProcessManager() {}
 
-bool GameManager::IsGameRunning() {
+bool ProcessManager::IsGameRunning() {
 	std::lock_guard<std::mutex> lock(this->gameStatusMutex);
 	return this->gameRunning;
 }
 
-void GameManager::InjectModule(const std::string& modulePath) {
+void ProcessManager::InjectModule(const std::string& modulePath) {
 	if (!this->IsGameRunning() || this->pid == 0) {
 		spdlog::warn("Game manager was requested to inject `{}`, but the game is not running", modulePath);
 		return;
@@ -190,20 +190,23 @@ void GameManager::InjectModule(const std::string& modulePath) {
 	spdlog::info("Injected module `{}`", modulePath);
 }
 
-void GameManager::LaunchGame() {
+void ProcessManager::LaunchProcess(const std::string& name) {
 	this->gameStartedTime = std::nullopt;
 	this->gameRunning = false;
 	this->pid = 0;
 	this->modules.clear();
 
 	std::thread([&]() {
-		if (C.processTarget == "ScrapMechanic.exe") {
+		if (name == "ScrapMechanic.exe") {
 			ShellExecute(NULL, L"open", L"steam://rungameid/387990", NULL, NULL, SW_SHOWNORMAL);
 			spdlog::info("Launching Scrap Mechanic via Steam");
 		}
+		else if (name == "ModTool.exe") {
+			ShellExecute(NULL, L"open", L"steam://rungameid/588870", NULL, NULL, SW_SHOWNORMAL);
+			spdlog::info("Launching Scrap Mechanic Mod Tool via Steam");
+		}
 		else {
-			std::string exePath = Utils::GetDataDir() + C.processTarget;
-			ShellExecute(NULL, L"open", std::wstring(exePath.begin(), exePath.end()).c_str(), NULL, NULL, SW_SHOWNORMAL);
+			ShellExecute(NULL, L"open", std::wstring(name.begin(), name.end()).c_str(), NULL, NULL, SW_SHOWNORMAL);
 			spdlog::info("Launching game via ShellExecute");
 		}
 
@@ -213,13 +216,24 @@ void GameManager::LaunchGame() {
 
 		this->gameStartedTime = std::chrono::system_clock::now();
 		std::this_thread::sleep_for(std::chrono::seconds(1));
-		this->InjectModule(Utils::GetCurrentModuleDir() + "CarbonSupervisor.dll");
+
+		if (C.guiManager.target == ModTarget::Game) {
+			this->InjectModule(Utils::GetCurrentModuleDir() + "CarbonSupervisor.dll");
+		}
+		else {
+			// Inject every module in the mods directory
+			for (auto& module : std::filesystem::recursive_directory_iterator(Utils::GetDataDir() + "mods")) {
+				if (!module.is_regular_file() || module.path().extension() != ".dll")
+					continue; // Skip directories and non-DLL files
+				this->InjectModule(module.path().string());
+			}
+		}
 		}).detach();
 
 	spdlog::info("Started game in detached thread");
 }
 
-void GameManager::KillGame() {
+void ProcessManager::KillGame() {
 	auto snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 	if (snapshot == INVALID_HANDLE_VALUE) {
 		return;
@@ -231,7 +245,7 @@ void GameManager::KillGame() {
 		return;
 	}
 	do {
-		std::string target(C.processTarget);
+		std::string target(C.guiManager.target == ModTarget::Game ? "ScrapMechanic.exe" : "ModTool.exe");
 		if (std::wstring(entry.szExeFile) == std::wstring(target.begin(), target.end())) {
 			HANDLE process = OpenProcess(PROCESS_TERMINATE, FALSE, entry.th32ProcessID);
 			if (process) {
@@ -247,7 +261,7 @@ void GameManager::KillGame() {
 	}
 }
 
-bool GameManager::IsModuleLoaded(const std::string& moduleName) const {
+bool ProcessManager::IsModuleLoaded(const std::string& moduleName) const {
 	std::vector<MODULEENTRY32> modules;
 	auto hProcesses = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, this->pid);
 	if (hProcesses == INVALID_HANDLE_VALUE) {
@@ -281,7 +295,7 @@ bool GameManager::IsModuleLoaded(const std::string& moduleName) const {
 	return false;
 }
 
-int GameManager::GetLoadedCustomModules() const {
+int ProcessManager::GetLoadedCustomModules() const {
 	while (!this->loadedCustomModules.has_value()) {
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}

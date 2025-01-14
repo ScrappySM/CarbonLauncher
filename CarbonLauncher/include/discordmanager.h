@@ -1,8 +1,5 @@
 #pragma once
 
-/*#include <discord-game-sdk/discord_game_sdk.h>
-#include <discord-game-sdk/discord.h>*/
-
 #include <discord_rpc.h>
 
 #include <string>

@@ -145,10 +145,10 @@
   <ItemGroup>
     <ClCompile Include="src\guimanager.cpp" />
     <ClCompile Include="src\discordmanager.cpp" />
-    <ClCompile Include="src\gamemanager.cpp" />
+    <ClCompile Include="src\processmanager.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\pipemanager.cpp" />
-    <ClCompile Include="src\repomanager.cpp" />
+    <ClCompile Include="src\modmanager.cpp" />
     <ClCompile Include="src\state.cpp" />
     <ClCompile Include="src\utils.cpp" />
     <ClCompile Include="vendor\src\connection_win.cpp" />
@@ -163,9 +163,9 @@
     <ClInclude Include="include\font\IconsFontAwesome6.h_fa-solid-900.ttf.h" />
     <ClInclude Include="include\guimanager.h" />
     <ClInclude Include="include\discordmanager.h" />
-    <ClInclude Include="include\gamemanager.h" />
+    <ClInclude Include="include\processmanager.h" />
     <ClInclude Include="include\pipemanager.h" />
-    <ClInclude Include="include\repomanager.h" />
+    <ClInclude Include="include\modmanager.h" />
     <ClInclude Include="include\state.h" />
     <ClInclude Include="include\utils.h" />
     <ClInclude Include="resource.h" />

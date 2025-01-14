@@ -31,39 +31,34 @@ namespace Carbon {
 		void Update();
 	};
 
-	struct Repo {
-		// The name of the repository (e.g. ScrappySM, Scrap-Mods)
-		std::string name;
-
-		// The link to the repositories website
-		std::string link;
-
-		// A list of all the mods
-		std::vector<Mod> mods;
+	enum ModTarget {
+		Game, // Scrap Mechanic
+		ModTool, // Scrap Mechanic Mod Tool
 	};
 
-	class RepoManager {
+	class ModManager {
 	public:
 		// Initializes the RepoManager and downloads the repos.json file
-		RepoManager();
-		~RepoManager();
+		ModManager();
+		~ModManager();
 
 		// Converts a JSON object to a Repo object
 		// @param json The JSON object to convert
 		// @return The converted Repo object (`json` -> `Repo`)
-		std::vector<Mod> URLToMods(const std::string& url);
+		std::pair<std::vector<Mod>, std::vector<Mod>> URLToMods(const std::string& url);
 
 		// Gets all the repos
 		// @return A vector of all the repos
-		std::vector<Mod>& GetMods() {
+		std::vector<Mod>& GetMods(ModTarget target) {
 			std::lock_guard<std::mutex> lock(this->repoMutex);
-			return this->mods;
+			return target == ModTarget::Game ? gameMods : modToolMods;
 		}
 
 		bool hasLoaded = false;
 
 	private:
-		std::vector<Mod> mods;
+		std::vector<Mod> gameMods;
+		std::vector<Mod> modToolMods;
 
 		std::optional<Mod> JSONToMod(const nlohmann::json& jMod);
 		std::mutex repoMutex;
