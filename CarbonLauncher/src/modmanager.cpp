@@ -81,7 +81,15 @@ std::optional<Mod> ModManager::JSONToMod(const nlohmann::json& jMod) {
 
 	if (hasManifest) {
 		spdlog::trace("Mod {} has a manifest.json!", ghUser + "/" + ghRepo);
-		auto jManifest = nlohmann::json::parse(manifest.text);
+		//auto jManifest = nlohmann::json::parse(manifest.text);
+		nlohmann::json jManifest;
+		try {
+			jManifest = nlohmann::json::parse(manifest.text);
+		}
+		catch (nlohmann::json::parse_error& e) {
+			spdlog::error("Failed to parse JSON: {}", e.what());
+			return std::nullopt;
+		}
 
 		mod.name = jManifest["name"];
 		mod.authors = jManifest["authors"].get<std::vector<std::string>>();
