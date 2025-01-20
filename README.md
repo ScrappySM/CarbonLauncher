@@ -1,5 +1,8 @@
 # Carbon Launcher
 
+> [!WARNING]
+> This is v1, it is being deprecated as the [v2 branch](https://github.com/ScrappySM/CarbonLauncher/tree/v2) is being worked on so please do not expect updates here (unless they are major issues)
+
 ![Carbon Launcher](screenshot.png)
 
 **Carbon Launcher** is a powerful and user-friendly modding launcher for [Scrap Mechanic](https://www.scrapmechanic.com/), designed to support DLL mods and provide cloud synchronization for an enhanced modding experience. With Carbon Launcher, players can seamlessly download and manage DLL mods from a variety of online repositories, creating a vast library of modding content directly accessible from the launcher.
