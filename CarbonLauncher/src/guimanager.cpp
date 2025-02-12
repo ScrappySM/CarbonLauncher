@@ -162,11 +162,6 @@ void GUIManager::Run() const {
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 		glfwSwapBuffers(window);
-
-		// Slow us down if we're running too fast
-		if (ImGui::GetIO().DeltaTime < 1.0f / 60.0f) {
-			std::this_thread::sleep_for(std::chrono::milliseconds((int)((1.0f / 60.0f - ImGui::GetIO().DeltaTime) * 1000)));
-		}
 	}
 }
 
