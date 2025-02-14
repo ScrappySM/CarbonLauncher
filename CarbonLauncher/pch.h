@@ -32,7 +32,3 @@
 #include <fmt/format.h>
 
 #include <simdjson.h>
-
-#include <tracy/Tracy.hpp>
-#include <tracy/TracyOpenGL.hpp>
-#include <tracy/TracyC.h>

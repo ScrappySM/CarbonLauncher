@@ -2,14 +2,13 @@
 
 #include "pch.h"
 
-namespace Managers {
-	class Game {
+namespace CL {
+	class GameManager {
 	public:
-		Game();
-		~Game();
-
-		Game(const Game&) = delete;
-		Game& operator=(const Game&) = delete;
+		static GameManager& GetInstance() {
+			static GameManager instance;
+			return instance;
+		}
 
 		/// <summary>
 		/// Launch the game
@@ -27,8 +26,6 @@ namespace Managers {
 		/// <returns>Whether the game was last seen running</returns>
 		bool IsRunning();
 
-		// void SetTargetName(const std::string_view& name);
-
 	private:
 		bool threadRunning = false;
 		bool gameRunning = false;
@@ -38,5 +35,10 @@ namespace Managers {
 
 		std::thread checkThread;
 		std::mutex mtx;
+
+		GameManager();
+		~GameManager();
+		GameManager(const GameManager&) = delete;
+		GameManager& operator=(const GameManager&) = delete;
 	};
-} // namespace Managers
+} // namespace CL

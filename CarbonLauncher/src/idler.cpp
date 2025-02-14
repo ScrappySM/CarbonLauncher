@@ -1,12 +1,12 @@
+#include "pch.h"
 #include "idler.h"
 
-void Idler::IdleBySleeping() const {
-    ZoneScoped;
+using namespace CL;
 
+void Idler::IdleBySleeping() const {
     if ((this->idleFPSLimit <= 0.f) || !this->enableIdling)
         return;
 
     double waitTimeout = 1. / (double)this->idleFPSLimit;
-
     glfwWaitEventsTimeout(waitTimeout);
 }

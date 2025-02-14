@@ -23,7 +23,6 @@
         "utf8-validation"
       ]
     },
-    "spdlog",
-    "tracy"
+    "spdlog"
   ]
 }

@@ -2,54 +2,28 @@
 
 #include "window.h"
 #include "helpers.h"
+#include "state.h"
+#include "idler.h"
+#include "managers/game.h"
+
 #include "font/IconsFontAwesome6.h"
 
-static void RenderDiscover(State* state) {
-	ZoneScoped;
+using namespace CL;
 
+static void RenderDiscover() {
 	ImGui::SeparatorText("Discover");
 }
 
-static void RenderConsole(State* state) {
-	ZoneScoped;
-
+static void RenderConsole() {
 	ImGui::SeparatorText("Console");
 }
 
-static void RenderSettings(State* state) {
-	ZoneScoped;
-
+static void RenderSettings() {
 	ImGui::SeparatorText("Settings");
-
-	static float width = (ImGui::GetWindowContentRegionMax().x - (ImGui::GetStyle().FramePadding.x + (ImGui::GetStyle().WindowPadding.x * 2))) / 2;
-
-	ImGui::BeginChild("GUI options", ImVec2(width, 0), true);
-
-	static bool* idlingEnabled = state->idler.GetEnableIdling();
-	ImGui::Checkbox("Idling enabled", idlingEnabled);
-	ImGui::SameLine();
-	ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), ICON_FA_INFO);
-	ImGui::SetItemTooltip("Whether the launcher's GUI should limit it's FPS when not interacted with, this is a performance feature");
-
-	ImGui::EndChild();
-
-	ImGui::SameLine();
-
-	ImGui::BeginChild("Game options", ImVec2(width, 0), true);
-
-	static bool tmp = true;
-	ImGui::Checkbox("Inject CarbonSupervisor", &tmp);
-	ImGui::SameLine();
-	ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), ICON_FA_INFO);
-	ImGui::SetItemTooltip("Whether the launcher should inject the CarbonSupervisor into the game after launch, it must be injected manually, only disable this if you know what you are doing!");
-
-	ImGui::EndChild();
 }
 
 static void Render(Window& window) {
-	ZoneScoped;
-
-	static State* state = State::GetInstance();
+	static State& state = State::GetInstance();
 
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
@@ -64,12 +38,12 @@ static void Render(Window& window) {
 	{
 		ImGui::BeginChild("##Control", ImVec2(0, 64), true);
 
-		static Managers::Game* gameManager = &state->gameManager;
-		bool isGameRunning = state->gameManager.IsRunning();
+		static GameManager& gameManager = GameManager::GetInstance();
+		bool isGameRunning = gameManager.IsRunning();
 
 		const char* text = isGameRunning ? "Kill game" : "Launch game";
 		if (ImGui::Button(text, ImVec2(128, 48))) {
-			isGameRunning ? gameManager->KillGame() : gameManager->LaunchGame();
+			isGameRunning ? gameManager.KillGame() : gameManager.LaunchGame();
 		}
 
 		ImGui::EndChild();
@@ -94,15 +68,15 @@ static void Render(Window& window) {
 
 		ImGui::BeginChild("##Content", ImVec2(0, 0), true);
 
-		switch (state->currentTab) {
+		switch (state.currentTab) {
 		case Tab::Discover:
-			RenderDiscover(state);
+			RenderDiscover();
 			break;
 		case Tab::Console:
-			RenderConsole(state);
+			RenderConsole();
 			break;
 		case Tab::Settings:
-			RenderSettings(state);
+			RenderSettings();
 			break;
 		}
 
@@ -116,17 +90,14 @@ static void Render(Window& window) {
 }
 
 int main(void) {
-	ZoneScoped;
-
 	Window window("Carbon Launcher", 1280, 720);
 
-	static State* state = State::GetInstance();
+	static State& state = State::GetInstance();
 	static auto clearColour = ImGui::GetStyle().Colors[ImGuiCol_WindowBg];
 
+	Idler idler;
 	while (!glfwWindowShouldClose(window.GetContext())) {
-		ZoneScopedN("Main Loop");
-
-		state->idler.IdleBySleeping();
+		idler.IdleBySleeping();
 
 		glfwPollEvents();
 
@@ -134,14 +105,7 @@ int main(void) {
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		Render(window);
-
 		glfwSwapBuffers(window.GetContext());
-
-		static ImGuiIO& io = ImGui::GetIO();
-		TracyPlot("FPS", io.Framerate);
-
-		TracyGpuCollect;
-		FrameMark;
 	}
 
 	return 0;

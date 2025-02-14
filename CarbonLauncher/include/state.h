@@ -2,35 +2,23 @@
 
 #include "pch.h"
 
-#include "idler.h"
+#include "tab.h"
 
-#include "managers/game.h"
+namespace CL {
+	class State {
+	public:
+		static State& GetInstance() {
+			static State instance;
+			return instance;
+		}
 
-enum class Tab {
-	Discover,
-	Console,
-	Settings,
-};
+		Tab currentTab = Tab::Discover;
 
-class State {
-public:
-	// GUI State
-	Tab currentTab = Tab::Discover;
-	Idler idler;
+	private:
+		State() = default;
+		~State() = default;
 
-	// Managers
-	Managers::Game gameManager;
-
-public:
-	static State* GetInstance() {
-		static State instance;
-		return &instance;
-	}
-
-private:
-	State() = default;
-	~State() = default;
-
-	State(const State&) = delete;
-	State& operator=(const State&) = delete;
-};
+		State(const State&) = delete;
+		State& operator=(const State&) = delete;
+	};
+} // namespace CL

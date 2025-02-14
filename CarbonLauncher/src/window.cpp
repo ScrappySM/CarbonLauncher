@@ -6,8 +6,6 @@
 #include "window.h"
 
 Window::Window(const std::string_view& title, int width, int height) : width(width), height(height) {
-	ZoneScoped;
-
 	if (!glfwInit()) {
 		spdlog::error("Failed to initialize GLFW");
 		std::exit(EXIT_FAILURE);
@@ -32,8 +30,7 @@ Window::Window(const std::string_view& title, int width, int height) : width(wid
 	}
 
 	glfwMakeContextCurrent(this->ctx);
-
-	glfwSwapInterval(1); // V-Sync
+	glfwSwapInterval(1);
 
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
 		spdlog::error("Failed to initialize GLAD");
@@ -47,9 +44,6 @@ Window::Window(const std::string_view& title, int width, int height) : width(wid
 		instance->width = width;
 		instance->height = height;
 		});
-
-	TracyGpuContext;
-	TracyGpuContextName("Main", 4);
 
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -101,13 +95,12 @@ Window::Window(const std::string_view& title, int width, int height) : width(wid
 	iconsConfig.PixelSnapH = true;
 	iconsConfig.GlyphMinAdvanceX = iconFontSize;
 	iconsConfig.FontDataOwnedByAtlas = false;
+
 	io.Fonts->AddFontFromMemoryTTF(data, size, iconFontSize, &iconsConfig, iconsRanges);
 	io.Fonts->Build();
 }
 
 Window::~Window() {
-	ZoneScoped;
-
 	glfwDestroyWindow(this->ctx);
 	glfwTerminate();
 }
