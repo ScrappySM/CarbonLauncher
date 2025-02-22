@@ -38,6 +38,7 @@ namespace CL {
 
 		GameManager();
 		~GameManager();
+
 		GameManager(const GameManager&) = delete;
 		GameManager& operator=(const GameManager&) = delete;
 	};

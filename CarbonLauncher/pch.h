@@ -4,6 +4,7 @@
 
 #define WIN32_LEAN_AND_MEAN
 #define GLFW_INCLUDE_NONE
+#define JSON_NOEXCEPTION
 
 #include <Windows.h>
 #include <TlHelp32.h>
@@ -31,4 +32,6 @@
 #include <spdlog/spdlog.h>
 #include <fmt/format.h>
 
-#include <simdjson.h>
+#include <nlohmann/json.hpp>
+
+#include <cpr/cpr.h>

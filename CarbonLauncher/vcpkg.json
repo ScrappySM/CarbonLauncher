@@ -16,13 +16,8 @@
         "opengl3-binding"
       ]
     },
-    {
-      "name": "simdjson",
-      "features": [
-        "threads",
-        "utf8-validation"
-      ]
-    },
-    "spdlog"
+    "nlohmann-json",
+    "spdlog",
+    "cpr"
   ]
 }

@@ -5,6 +5,7 @@
 #include "state.h"
 #include "idler.h"
 #include "managers/game.h"
+#include "managers/repo.h"
 
 #include "font/IconsFontAwesome6.h"
 
@@ -12,6 +13,51 @@ using namespace CL;
 
 static void RenderDiscover() {
 	ImGui::SeparatorText("Discover");
+
+	static char jsonBuffer[256] = "https://raw.githubusercontent.com/ScrappySM/CarbonRepo/refs/heads/main/wip.json";
+	ImGui::InputText("##JSON", jsonBuffer, sizeof(jsonBuffer));
+
+	ImGui::SameLine();
+
+	static bool ret = false;
+	if (ImGui::SmallButton("Load")) {
+		ret = RepoManager::GetInstance().LoadRepo(jsonBuffer);
+	}
+
+	if (ret) {
+		ImGui::ItemSize(ImVec2(0, 16));
+
+		if (ImGui::TreeNode("Mods")) {
+			auto& mods = RepoManager::GetInstance().GetMods();
+			for (auto& mod : mods) {
+				if (ImGui::TreeNode(mod.name)) {
+					ImGui::Text("Description: %s", mod.description);
+					ImGui::Text("Commit Hash: %s", mod.commitHash);
+
+					if (ImGui::TreeNode("Authors")) {
+						for (auto& author : mod.authors) {
+							ImGui::Text(author.c_str());
+						}
+
+						ImGui::TreePop();
+					}
+
+					if (ImGui::TreeNode("Files")) {
+						for (auto& file : mod.files) {
+							if (ImGui::TreeNode(file.name)) {
+								ImGui::Text("URL: %s", file.url);
+								ImGui::Text("Hash: %s", file.hash);
+								ImGui::TreePop();
+							}
+						}
+						ImGui::TreePop();
+					}
+					ImGui::TreePop();
+				}
+			}
+			ImGui::TreePop();
+		}
+	}
 }
 
 static void RenderConsole() {
