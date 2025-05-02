@@ -1,7 +1,7 @@
 # Carbon Launcher
 
 > [!WARNING]
-> This is v1, it is being deprecated as the [v2 branch](https://github.com/ScrappySM/CarbonLauncher/tree/v2) is being worked on so please do not expect updates here (unless they are major issues)
+> This is v1, it is being deprecated as the [v2 branch](https://github.com/ScrappySM/CarbonLauncher/tree/tauri) is being worked on so please do not expect updates here (unless they are major issues)
 
 ![Carbon Launcher](screenshot.png)
 
